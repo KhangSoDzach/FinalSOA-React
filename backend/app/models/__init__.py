@@ -4,6 +4,7 @@ from .cashflow import CashFlow, BankStatement, CashFlowType, CashFlowCategory
 from .notification import Notification, NotificationRead, NotificationResponse, NotificationType, NotificationStatus, ResponseType
 from .ticket import Ticket, TicketAttachment, TicketLog, TicketStatus, TicketPriority, TicketCategory
 from .service import Service, ServiceBooking, ServiceStatus, ServiceCategory, BookingStatus
+from .apartment import Apartment, ApartmentStatus
 
 __all__ = [
     "User", "UserRole",
@@ -11,5 +12,6 @@ __all__ = [
     "CashFlow", "BankStatement", "CashFlowType", "CashFlowCategory",
     "Notification", "NotificationRead", "NotificationResponse", "NotificationType", "NotificationStatus", "ResponseType",
     "Ticket", "TicketAttachment", "TicketLog", "TicketStatus", "TicketPriority", "TicketCategory",
-    "Service", "ServiceBooking", "ServiceStatus", "ServiceCategory", "BookingStatus"
+    "Service", "ServiceBooking", "ServiceStatus", "ServiceCategory", "BookingStatus",
+    "Apartment", "ApartmentStatus"
 ]

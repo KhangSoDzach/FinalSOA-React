@@ -7,8 +7,10 @@ import {
   FiTruck, 
   FiSettings, 
   FiUser,
-  FiTool
+  FiTool,
+  FiUsers
 } from 'react-icons/fi'
+import { BsBuilding } from 'react-icons/bs'
 import { useAuth } from '../../contexts/AuthContext'
 
 const sidebarItems = [
@@ -17,6 +19,14 @@ const sidebarItems = [
   { name: 'Feedback', icon: FiMessageSquare, path: '/tickets' },
   { name: 'Vehicle Card', icon: FiTruck, path: '/vehicles' },
   { name: 'Utilities', icon: FiTool, path: '/utilities' },
+]
+
+const adminItems = [
+  { name: 'Home', icon: FiHome, path: '/' },
+  { name: 'Apartments', icon: BsBuilding, path: '/apartments' },
+  { name: 'Users', icon: FiUsers, path: '/users' },
+  { name: 'Bills', icon: FiFileText, path: '/bills' },
+  { name: 'Tickets', icon: FiMessageSquare, path: '/tickets' },
 ]
 
 const bottomItems = [
@@ -152,7 +162,7 @@ export default function AdminSidebar() {
 
         {/* Main Navigation */}
         <VStack spacing="1" flex="1" align="stretch" w="full">
-          {sidebarItems.map((item) => (
+          {(isAdmin ? adminItems : sidebarItems).map((item) => (
             <SidebarItem key={item.path} item={item} />
           ))}
         </VStack>

@@ -10,7 +10,10 @@ import Utilities from './pages/Utilities'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import ApartmentsManagement from './pages/admin/ApartmentsManagement'
+import UsersManagement from './pages/admin/UsersManagement'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { AdminRoute } from './components/AdminRoute'
 import { useAuth } from './contexts/AuthContext'
 
 function DashboardWrapper() {
@@ -47,6 +50,8 @@ function App() {
           <Route path="utilities" element={<Utilities />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="apartments" element={<AdminRoute><ApartmentsManagement /></AdminRoute>} />
+          <Route path="users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
         </Route>
       </Routes>
     </Box>
