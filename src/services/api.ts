@@ -85,8 +85,14 @@ export const usersAPI = {
 
 // Bills API
 export const billsAPI = {
-  getAll: async () => {
-    const response = await api.get('/bills')
+  getAll: async (params?: {
+    skip?: number
+    limit?: number
+    user_id?: number
+    status?: string
+    building?: string
+  }) => {
+    const response = await api.get('/bills', { params })
     return response.data
   },
   
@@ -100,6 +106,11 @@ export const billsAPI = {
     return response.data
   },
   
+  batchCreate: async (billsData: any[]) => {
+    const response = await api.post('/bills/batch-create', billsData)
+    return response.data
+  },
+  
   update: async (id: number, billData: any) => {
     const response = await api.put(`/bills/${id}`, billData)
     return response.data
@@ -107,6 +118,47 @@ export const billsAPI = {
   
   delete: async (id: number) => {
     const response = await api.delete(`/bills/${id}`)
+    return response.data
+  },
+  
+  sendReminder: async (billIds?: number[]) => {
+    const response = await api.post('/bills/send-reminder', billIds || null)
+    return response.data
+  },
+  
+  getStatistics: async (startDate?: string, endDate?: string) => {
+    const params: any = {}
+    if (startDate) params.start_date = startDate
+    if (endDate) params.end_date = endDate
+    const response = await api.get('/bills/statistics', { params })
+    return response.data
+  },
+  
+  exportReport: async (params?: {
+    start_date?: string
+    end_date?: string
+    status_filter?: string
+    bill_type_filter?: string
+  }) => {
+    const response = await api.get('/bills/export-report', {
+      params,
+      responseType: 'blob'
+    })
+    return response.data
+  },
+  
+  markOverdue: async () => {
+    const response = await api.put('/bills/mark-overdue')
+    return response.data
+  },
+  
+  confirmPayment: async (paymentId: number, data: any) => {
+    const response = await api.put(`/bills/payments/${paymentId}/confirm`, data)
+    return response.data
+  },
+  
+  getPayments: async (billId: number) => {
+    const response = await api.get(`/bills/${billId}/payments`)
     return response.data
   }
 }
