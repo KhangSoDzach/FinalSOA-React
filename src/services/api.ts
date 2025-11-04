@@ -62,13 +62,32 @@ export const authAPI = {
 
 // Users API
 export const usersAPI = {
-  getAll: async () => {
-    const response = await api.get('/users')
+  getAll: async (params?: {
+    skip?: number
+    limit?: number
+    building?: string
+    role?: string
+  }) => {
+    const response = await api.get('/users', { params })
     return response.data
   },
   
   getById: async (id: number) => {
     const response = await api.get(`/users/${id}`)
+    return response.data
+  },
+  
+  create: async (userData: {
+    username: string
+    email: string
+    password: string
+    full_name: string
+    phone?: string
+    apartment_number?: string
+    building?: string
+    role?: string
+  }) => {
+    const response = await api.post('/users', userData)
     return response.data
   },
   
@@ -79,6 +98,11 @@ export const usersAPI = {
   
   delete: async (id: number) => {
     const response = await api.delete(`/users/${id}`)
+    return response.data
+  },
+  
+  getStats: async () => {
+    const response = await api.get('/users/stats/overview')
     return response.data
   }
 }

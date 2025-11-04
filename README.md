@@ -32,21 +32,72 @@ Hệ thống quản lý chung cư được xây dựng bằng React TypeScript v
 
 ## Cài đặt và chạy dự án
 
-### 1. Cài đặt dependencies
+### Yêu cầu hệ thống
+- Node.js (v16 trở lên)
+- Python 3.8+
+- PostgreSQL (cho backend)
+
+### 1. Cài đặt Frontend Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Chạy development server
+### 2. Cài đặt Backend Dependencies
+
+```bash
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+
+### 3. Thiết lập Database
+
+```bash
+cd backend
+python scripts/reset_db.py
+cd ..
+```
+
+### 4. Chạy Development Server
+
+**Cách 1: Tự động (Khuyến nghị)** - Backend tự động khởi động cùng Frontend
 
 ```bash
 npm run dev
 ```
 
-Ứng dụng sẽ chạy tại `http://localhost:3000`
+hoặc
 
-### 3. Build cho production
+```bash
+npm start
+```
+
+**Cách 2: Chạy riêng biệt**
+
+Terminal 1 - Backend:
+```bash
+npm run backend
+```
+
+Terminal 2 - Frontend:
+```bash
+npm run frontend
+```
+
+**Cách 3: Chạy song song với Concurrently**
+
+```bash
+npm run dev:full
+```
+
+### Truy cập ứng dụng
+
+- **Frontend**: `http://localhost:3000`
+- **Backend API**: `http://localhost:8000`
+- **API Docs**: `http://localhost:8000/docs`
+
+### 5. Build cho production
 
 ```bash
 npm run build
