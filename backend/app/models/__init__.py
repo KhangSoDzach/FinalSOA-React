@@ -5,6 +5,7 @@ from .notification import Notification, NotificationRead, NotificationResponse, 
 from .ticket import Ticket, TicketAttachment, TicketLog, TicketStatus, TicketPriority, TicketCategory
 from .service import Service, ServiceBooking, ServiceStatus, ServiceCategory, BookingStatus
 from .apartment import Apartment, ApartmentStatus
+from .vehicle import Vehicle, VehicleType, VehicleStatus
 
 __all__ = [
     "User", "UserRole",
@@ -13,5 +14,6 @@ __all__ = [
     "Notification", "NotificationRead", "NotificationResponse", "NotificationType", "NotificationStatus", "ResponseType",
     "Ticket", "TicketAttachment", "TicketLog", "TicketStatus", "TicketPriority", "TicketCategory",
     "Service", "ServiceBooking", "ServiceStatus", "ServiceCategory", "BookingStatus",
-    "Apartment", "ApartmentStatus"
+    "Apartment", "ApartmentStatus",
+    "Vehicle", "VehicleType", "VehicleStatus"
 ]

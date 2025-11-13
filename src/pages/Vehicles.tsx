@@ -22,90 +22,138 @@ import {
   FormLabel,
   Input,
   Select,
+  useToast,
+  Image,
 } from '@chakra-ui/react'
 import { 
   FiPlus, 
-  FiTruck,
   FiCheckCircle,
   FiXCircle,
   FiEdit,
   FiTrash
 } from 'react-icons/fi'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import api from '../services/api'
 
 interface Vehicle {
-  id: string
-  licensePlate: string
+  id: number
+  license_plate: string
   make: string
   model: string
   color: string
-  type: 'car' | 'motorcycle' | 'bicycle'
-  status: 'active' | 'pending' | 'expired'
-  registeredAt: string
-  expiresAt: string
-  parkingSpot?: string
+  vehicle_type: 'car' | 'motorcycle' | 'bicycle'
+  status: 'active' | 'pending' | 'expired' | 'rejected'
+  registered_at: string
+  expires_at?: string
+  parking_spot?: string
+  rejection_reason?: string
+  license_plate_image?: string
 }
-
-const mockVehicles: Vehicle[] = [
-  {
-    id: 'VH-001',
-    licensePlate: '30A-123.45',
-    make: 'Toyota',
-    model: 'Camry',
-    color: 'White',
-    type: 'car',
-    status: 'active',
-    registeredAt: '2025-01-15',
-    expiresAt: '2026-01-15',
-    parkingSpot: 'P1-23'
-  },
-  {
-    id: 'VH-002',
-    licensePlate: '30A-678.90',
-    make: 'Honda',
-    model: 'Wave',
-    color: 'Red',
-    type: 'motorcycle',
-    status: 'active',
-    registeredAt: '2025-03-10',
-    expiresAt: '2026-03-10',
-    parkingSpot: 'M1-05'
-  },
-  {
-    id: 'VH-003',
-    licensePlate: '30A-999.88',
-    make: 'Ford',
-    model: 'Focus',
-    color: 'Blue',
-    type: 'car',
-    status: 'pending',
-    registeredAt: '2025-10-28',
-    expiresAt: '2026-10-28'
-  }
-]
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'active': return 'green'
     case 'pending': return 'orange'
     case 'expired': return 'red'
+    case 'rejected': return 'red'
     default: return 'gray'
   }
 }
 
-const getTypeIcon = (_type: string) => {
-  return FiTruck // Simplified for now
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case 'car': return 'Ô tô'
+    case 'motorcycle': return 'Xe máy'
+    case 'bicycle': return 'Xe đạp'
+    default: return type
+  }
 }
 
 export default function Vehicles() {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [loading, setLoading] = useState(true)
+  const toast = useToast()
+  
   const [formData, setFormData] = useState({
-    licensePlate: '',
+    license_plate: '',
     make: '',
     model: '',
     color: '',
-    type: 'car'
+    vehicle_type: 'car'
   })
+
+  useEffect(() => {
+    fetchVehicles()
+  }, [])
+
+  const fetchVehicles = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get('/vehicles/my-vehicles')
+      setVehicles(response.data)
+    } catch (error) {
+      console.error('Error fetching vehicles:', error)
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể tải danh sách xe',
+        status: 'error',
+        duration: 3000,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    try {
+      await api.post('/vehicles/', formData)
+      toast({
+        title: 'Thành công',
+        description: 'Đăng ký xe thành công. Chờ xác nhận từ ban quản lý.',
+        status: 'success',
+        duration: 3000,
+      })
+      onClose()
+      fetchVehicles()
+      setFormData({
+        license_plate: '',
+        make: '',
+        model: '',
+        color: '',
+        vehicle_type: 'car'
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Lỗi',
+        description: error.response?.data?.detail || 'Không thể đăng ký xe',
+        status: 'error',
+        duration: 3000,
+      })
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Bạn có chắc muốn xóa xe này?')) return
+    
+    try {
+      await api.delete(`/vehicles/${id}`)
+      toast({
+        title: 'Thành công',
+        description: 'Đã xóa xe',
+        status: 'success',
+        duration: 3000,
+      })
+      fetchVehicles()
+    } catch (error) {
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể xóa xe',
+        status: 'error',
+        duration: 3000,
+      })
+    }
+  }
 
   return (
     <Box>
@@ -127,106 +175,160 @@ export default function Vehicles() {
 
       {/* Vehicle Grid */}
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="6">
-        {mockVehicles.map((vehicle) => (
-          <Card key={vehicle.id}>
+        {loading ? (
+          <Card>
             <CardBody>
-              <VStack spacing="4" align="stretch">
-                {/* Vehicle Icon/Image */}
-                <Box textAlign="center" py="4" bg="gray.50" borderRadius="md">
-                  <Icon as={getTypeIcon(vehicle.type)} boxSize="12" color="gray.400" />
-                </Box>
-                
-                {/* Vehicle Info */}
-                <VStack spacing="2" align="stretch">
-                  <HStack justify="space-between">
-                    <Text fontWeight="bold" fontSize="lg">
-                      {vehicle.licensePlate}
-                    </Text>
-                    <Badge colorScheme={getStatusColor(vehicle.status)}>
-                      {vehicle.status.toUpperCase()}
-                    </Badge>
-                  </HStack>
+              <Text textAlign="center">Đang tải...</Text>
+            </CardBody>
+          </Card>
+        ) : vehicles.length === 0 ? (
+          <Card>
+            <CardBody>
+              <Text textAlign="center">Bạn chưa đăng ký xe nào</Text>
+            </CardBody>
+          </Card>
+        ) : (
+          vehicles.map((vehicle) => (
+            <Card key={vehicle.id}>
+              <CardBody>
+                <VStack spacing="4" align="stretch">
+                  {/* License Plate Image */}
+                  <Box textAlign="center" py="4" bg="gray.50" borderRadius="md">
+                    {vehicle.license_plate_image ? (
+                      <Image
+                        src={`http://localhost:8000${vehicle.license_plate_image}`}
+                        alt={`Biển số ${vehicle.license_plate}`}
+                        maxH="100px"
+                        mx="auto"
+                        objectFit="contain"
+                        borderRadius="md"
+                      />
+                    ) : (
+                      <VStack spacing={2}>
+                        <Icon as={FiCheckCircle} boxSize="12" color="gray.400" />
+                        <Text fontWeight="bold" fontSize="lg">
+                          {vehicle.license_plate}
+                        </Text>
+                      </VStack>
+                    )}
+                  </Box>
                   
-                  <Text color="gray.600">
-                    {vehicle.make} {vehicle.model}
-                  </Text>
-                  
-                  <HStack justify="space-between" fontSize="sm" color="gray.500">
-                    <Text>Color: {vehicle.color}</Text>
-                    <Text>Type: {vehicle.type}</Text>
-                  </HStack>
-                  
-                  {vehicle.parkingSpot && (
-                    <HStack justify="space-between" fontSize="sm">
-                      <Text color="gray.500">Parking Spot:</Text>
-                      <Text fontWeight="medium" color="brand.500">
-                        {vehicle.parkingSpot}
-                      </Text>
+                  {/* Vehicle Info */}
+                  <VStack spacing="2" align="stretch">
+                    <HStack justify="space-between">
+                      <Badge colorScheme={getStatusColor(vehicle.status)}>
+                        {vehicle.status === 'pending' && 'CHỜ XÁC NHẬN'}
+                        {vehicle.status === 'active' && 'ACTIVE'}
+                        {vehicle.status === 'expired' && 'HẾT HẠN'}
+                        {vehicle.status === 'rejected' && 'BỊ TỪ CHỐI'}
+                      </Badge>
                     </HStack>
-                  )}
+                    
+                    <Text color="gray.600">
+                      {vehicle.make} {vehicle.model}
+                    </Text>
+                    
+                    <HStack justify="space-between" fontSize="sm" color="gray.500">
+                      <Text>Màu: {vehicle.color}</Text>
+                      <Text>Loại: {getTypeLabel(vehicle.vehicle_type)}</Text>
+                    </HStack>
+                    
+                    {vehicle.parking_spot && (
+                      <HStack justify="space-between" fontSize="sm">
+                        <Text color="gray.500">Vị trí đỗ:</Text>
+                        <Text fontWeight="medium" color="brand.500">
+                          {vehicle.parking_spot}
+                        </Text>
+                      </HStack>
+                    )}
+                    
+                    {vehicle.expires_at && (
+                      <HStack justify="space-between" fontSize="sm" color="gray.500">
+                        <Text>Hết hạn:</Text>
+                        <Text>{new Date(vehicle.expires_at).toLocaleDateString('vi-VN')}</Text>
+                      </HStack>
+                    )}
+                    
+                    {vehicle.rejection_reason && (
+                      <Box p="2" bg="red.50" borderRadius="md">
+                        <Text fontSize="xs" color="red.700">
+                          Lý do: {vehicle.rejection_reason}
+                        </Text>
+                      </Box>
+                    )}
+                  </VStack>
                   
-                  <HStack justify="space-between" fontSize="sm" color="gray.500">
-                    <Text>Expires:</Text>
-                    <Text>{new Date(vehicle.expiresAt).toLocaleDateString()}</Text>
+                  {/* Action Buttons */}
+                  <HStack spacing="2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      leftIcon={<FiEdit />} 
+                      flex="1"
+                      isDisabled={vehicle.status === 'active'}
+                    >
+                      Sửa
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      colorScheme="red" 
+                      leftIcon={<FiTrash />}
+                      onClick={() => handleDelete(vehicle.id)}
+                    >
+                      Xóa
+                    </Button>
                   </HStack>
                 </VStack>
-                
-                {/* Action Buttons */}
-                <HStack spacing="2">
-                  <Button size="sm" variant="outline" leftIcon={<FiEdit />} flex="1">
-                    Edit
-                  </Button>
-                  <Button size="sm" variant="outline" colorScheme="red" leftIcon={<FiTrash />}>
-                    Remove
-                  </Button>
-                </HStack>
+              </CardBody>
+            </Card>
+          ))
+        )}
+        
+        {/* Add New Vehicle Card */}
+        {vehicles.length < 4 && (
+          <Card 
+            cursor="pointer" 
+            borderStyle="dashed" 
+            borderWidth="2px"
+            borderColor="gray.300"
+            _hover={{ borderColor: 'brand.300', bg: 'brand.50' }}
+            onClick={onOpen}
+          >
+            <CardBody>
+              <VStack spacing="4" justify="center" h="full" textAlign="center" py="8">
+                <Icon as={FiPlus} boxSize="12" color="gray.400" />
+                <Text fontWeight="medium" color="gray.600">
+                  Đăng ký xe mới
+                </Text>
               </VStack>
             </CardBody>
           </Card>
-        ))}
-        
-        {/* Add New Vehicle Card */}
-        <Card 
-          cursor="pointer" 
-          borderStyle="dashed" 
-          borderWidth="2px"
-          borderColor="gray.300"
-          _hover={{ borderColor: 'brand.300', bg: 'brand.50' }}
-          onClick={onOpen}
-        >
-          <CardBody>
-            <VStack spacing="4" justify="center" h="full" textAlign="center" py="8">
-              <Icon as={FiPlus} boxSize="12" color="gray.400" />
-              <Text fontWeight="medium" color="gray.600">
-                Register New Vehicle
-              </Text>
-            </VStack>
-          </CardBody>
-        </Card>
+        )}
       </SimpleGrid>
 
       {/* Registration Guidelines */}
       <Card mt="8">
         <CardBody>
           <Text fontSize="lg" fontWeight="semibold" mb="4">
-            Registration Guidelines
+            Hướng dẫn đăng ký
           </Text>
           <VStack spacing="3" align="stretch">
             <HStack>
               <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Each unit can register up to 2 cars and 2 motorcycles</Text>
+              <Text>Mỗi căn hộ có thể đăng ký tối đa 2 ô tô và 2 xe máy</Text>
             </HStack>
             <HStack>
               <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Vehicle registration is valid for 1 year</Text>
+              <Text>Đăng ký xe có hiệu lực 1 năm</Text>
             </HStack>
             <HStack>
               <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Parking spots are assigned based on availability</Text>
+              <Text>Vị trí đỗ xe sẽ được phân công dựa trên tình trạng còn trống</Text>
             </HStack>
             <HStack>
               <Icon as={FiXCircle} color="red.500" />
-              <Text>Unregistered vehicles will be towed</Text>
+              <Text>Xe chưa đăng ký sẽ bị kéo đi</Text>
             </HStack>
           </VStack>
         </CardBody>
@@ -236,45 +338,45 @@ export default function Vehicles() {
       <Modal isOpen={isOpen} onClose={onClose} size="lg">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Register New Vehicle</ModalHeader>
+          <ModalHeader>Đăng ký xe mới</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb="6">
             <VStack spacing="4" align="stretch">
               <FormControl>
-                <FormLabel>License Plate</FormLabel>
+                <FormLabel>Biển số xe</FormLabel>
                 <Input
-                  placeholder="e.g., 30A-123.45"
-                  value={formData.licensePlate}
-                  onChange={(e) => setFormData({...formData, licensePlate: e.target.value})}
+                  placeholder="Ví dụ: 30A-123.45"
+                  value={formData.license_plate}
+                  onChange={(e) => setFormData({...formData, license_plate: e.target.value})}
                 />
               </FormControl>
 
               <FormControl>
-                <FormLabel>Vehicle Type</FormLabel>
+                <FormLabel>Loại xe</FormLabel>
                 <Select
-                  value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  value={formData.vehicle_type}
+                  onChange={(e) => setFormData({...formData, vehicle_type: e.target.value})}
                 >
-                  <option value="car">Car</option>
-                  <option value="motorcycle">Motorcycle</option>
-                  <option value="bicycle">Bicycle</option>
+                  <option value="car">Ô tô</option>
+                  <option value="motorcycle">Xe máy</option>
+                  <option value="bicycle">Xe đạp</option>
                 </Select>
               </FormControl>
 
               <HStack spacing="4">
                 <FormControl>
-                  <FormLabel>Make</FormLabel>
+                  <FormLabel>Hãng xe</FormLabel>
                   <Input
-                    placeholder="e.g., Toyota"
+                    placeholder="Ví dụ: Toyota"
                     value={formData.make}
                     onChange={(e) => setFormData({...formData, make: e.target.value})}
                   />
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel>Model</FormLabel>
+                  <FormLabel>Dòng xe</FormLabel>
                   <Input
-                    placeholder="e.g., Camry"
+                    placeholder="Ví dụ: Camry"
                     value={formData.model}
                     onChange={(e) => setFormData({...formData, model: e.target.value})}
                   />
@@ -282,9 +384,9 @@ export default function Vehicles() {
               </HStack>
 
               <FormControl>
-                <FormLabel>Color</FormLabel>
+                <FormLabel>Màu sắc</FormLabel>
                 <Input
-                  placeholder="e.g., White"
+                  placeholder="Ví dụ: Trắng"
                   value={formData.color}
                   onChange={(e) => setFormData({...formData, color: e.target.value})}
                 />
@@ -292,10 +394,10 @@ export default function Vehicles() {
 
               <HStack spacing="3">
                 <Button flex="1" variant="outline" onClick={onClose}>
-                  Cancel
+                  Hủy
                 </Button>
-                <Button flex="1" colorScheme="brand">
-                  Register Vehicle
+                <Button flex="1" colorScheme="brand" onClick={handleSubmit}>
+                  Đăng ký xe
                 </Button>
               </HStack>
             </VStack>

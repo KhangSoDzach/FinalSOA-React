@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.database import init_db
 from app.api.main import api_router
+import os
 
 app = FastAPI(
     title="Apartment Management API",
@@ -17,6 +19,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for images
+images_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Images")
+app.mount("/images", StaticFiles(directory=images_path), name="images")
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")

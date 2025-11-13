@@ -5,6 +5,7 @@ from .notification import NotificationCreate, NotificationUpdate, NotificationRe
 from .ticket import TicketCreate, TicketUpdate, TicketResponse, TicketAssign, TicketResolve, TicketFeedback, TicketStats
 from .service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceBookingCreate, ServiceBookingUpdate, ServiceBookingResponse, BookingConfirm, BookingFeedback
 from .apartment import ApartmentCreate, ApartmentUpdate, ApartmentResponse, ApartmentWithResident, ApartmentRegisterUser
+from .vehicle import VehicleCreate, VehicleUpdate, VehicleResponse, VehicleWithUserResponse, VehicleApproval, VehicleStats
 
 __all__ = [
     # User schemas
@@ -26,5 +27,8 @@ __all__ = [
     "ServiceCreate", "ServiceUpdate", "ServiceResponse", "ServiceBookingCreate", "ServiceBookingUpdate", "ServiceBookingResponse", "BookingConfirm", "BookingFeedback",
     
     # Apartment schemas
-    "ApartmentCreate", "ApartmentUpdate", "ApartmentResponse", "ApartmentWithResident", "ApartmentRegisterUser"
+    "ApartmentCreate", "ApartmentUpdate", "ApartmentResponse", "ApartmentWithResident", "ApartmentRegisterUser",
+    
+    # Vehicle schemas
+    "VehicleCreate", "VehicleUpdate", "VehicleResponse", "VehicleWithUserResponse", "VehicleApproval", "VehicleStats"
 ]

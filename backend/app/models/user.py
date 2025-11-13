@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from .ticket import Ticket
     from .service import ServiceBooking
     from .apartment import Apartment
+    from .vehicle import Vehicle
 
 class UserRole(str, Enum):
     USER = "user"
@@ -34,3 +35,4 @@ class User(SQLModel, table=True):
     payments: List["Payment"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[Payment.user_id]"})
     service_bookings: List["ServiceBooking"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[ServiceBooking.user_id]"})
     apartment: Optional["Apartment"] = Relationship(back_populates="resident")
+    vehicles: List["Vehicle"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[Vehicle.user_id]"})
