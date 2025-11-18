@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     upload_dir: str = "uploads/"
-    
+    EMAIL_HOST: str
+    EMAIL_PORT: int
+    EMAIL_USER: str
+    EMAIL_PASS: str
     class Config:
         env_file = ".env"
 

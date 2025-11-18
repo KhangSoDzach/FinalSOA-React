@@ -1,6 +1,5 @@
 import axios from 'axios'
 
-// Create axios instance with base configuration
 const api = axios.create({
   baseURL: 'http://localhost:8000/api/v1',
   headers: {
@@ -8,7 +7,6 @@ const api = axios.create({
   },
 })
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
@@ -22,7 +20,6 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -35,7 +32,6 @@ api.interceptors.response.use(
   }
 )
 
-// Auth API
 export const authAPI = {
   login: async (credentials: { username: string; password: string }) => {
     const response = await api.post('/auth/login', credentials)
@@ -49,24 +45,35 @@ export const authAPI = {
     full_name: string
     phone?: string
     apartment_number?: string
+    occupier?: string
   }) => {
     const response = await api.post('/auth/register', userData)
     return response.data
   },
   
   getCurrentUser: async () => {
-    const response = await api.get('/auth/me')
+    const response = await api.get('/users/me') // Dùng /users/me hoặc /auth/me tùy backend map
+    return response.data
+  },
+
+  // 🌟 HÀM MỚI: Đổi mật khẩu
+  changePassword: async (passwords: {
+    old_password: string
+    new_password: string
+  }) => {
+    // Gọi endpoint POST /users/change-password (Giả định endpoint này là của Users Router)
+    const response = await api.post('/users/change-password', passwords) 
     return response.data
   }
 }
 
-// Users API
 export const usersAPI = {
   getAll: async (params?: {
     skip?: number
     limit?: number
     building?: string
     role?: string
+    occupier?: string
   }) => {
     const response = await api.get('/users', { params })
     return response.data
@@ -86,8 +93,19 @@ export const usersAPI = {
     apartment_number?: string
     building?: string
     role?: string
+    occupier?: string
   }) => {
     const response = await api.post('/users', userData)
+    return response.data
+  },
+  
+  // Cập nhật hồ sơ người dùng hiện tại (PUT /users/me)
+  updateCurrentUser: async (userData: {
+    full_name?: string
+    email?: string
+    phone?: string
+  }) => {
+    const response = await api.put('/users/me', userData)
     return response.data
   },
   
@@ -107,8 +125,26 @@ export const usersAPI = {
   }
 }
 
-// Bills API
 export const billsAPI = {
+  requestPayment: async (billId: number) => {
+    const response = await api.post('/bills/request-pay', { bill_id: billId })
+    return response.data
+  },
+  
+  verifyOTP: async (paymentId: number, otp: string) => {
+    const response = await api.post('/bills/verify-otp', { payment_id: paymentId, otp: otp })
+    return response.data
+  },
+  
+  resendOTP: async (billId: number) => {
+    const response = await api.post('/bills/resend-otp', { bill_id: billId })
+    return response.data
+  },
+  
+  payBill: async (billId: number) => {
+    return billsAPI.requestPayment(billId);
+  },
+
   getAll: async (params?: {
     skip?: number
     limit?: number
@@ -119,7 +155,19 @@ export const billsAPI = {
     const response = await api.get('/bills', { params })
     return response.data
   },
+  getMyBills: async (status?: string) => {
+    const response = await api.get('/bills/my-bills', {
+      params: { status },
+    });
+    return response.data;
+  },
   
+  getAllBills: async (status?: string) => {
+    const response = await api.get('/bills', {
+      params: { status },
+    });
+    return response.data;
+  },
   getById: async (id: number) => {
     const response = await api.get(`/bills/${id}`)
     return response.data
@@ -187,14 +235,25 @@ export const billsAPI = {
   }
 }
 
-// Tickets API
 export const ticketsAPI = {
-  getAll: async () => {
-    const response = await api.get('/tickets')
+  getAll: async (params?: {
+    skip?: number
+    limit?: number
+    status?: string
+    category?: string
+    assigned_to?: number
+  }) => {
+    const response = await api.get('/tickets', { params })
     return response.data
   },
+  getMyTickets: async (status?: string) => {
+    const response = await api.get('/tickets/my-tickets', {
+      params: { status },
+    });
+    return response.data;
+  },
   
-  getById: async (id: number) => {
+  getTicketDetails: async (id: number) => {
     const response = await api.get(`/tickets/${id}`)
     return response.data
   },
@@ -209,13 +268,46 @@ export const ticketsAPI = {
     return response.data
   },
   
+  assignTicket: async (id: number, assigned_to: number) => {
+    const response = await api.post(`/tickets/${id}/assign`, { assigned_to })
+    return response.data
+  },
+  
+  resolveTicket: async (id: number, resolution_notes: string) => {
+    const response = await api.post(`/tickets/${id}/resolve`, { resolution_notes })
+    return response.data
+  },
+  
+  uploadAttachment: async (id: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/tickets/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  
+  getAttachments: async (id: number) => {
+    const response = await api.get(`/tickets/${id}/attachments`);
+    return response.data;
+  },
+  
+  getLogs: async (id: number) => {
+    const response = await api.get(`/tickets/${id}/logs`);
+    return response.data;
+  },
+  
+  getStats: async () => {
+    const response = await api.get('/tickets/stats/overview');
+    return response.data;
+  },
+  
   delete: async (id: number) => {
     const response = await api.delete(`/tickets/${id}`)
     return response.data
   }
 }
 
-// Services API
 export const servicesAPI = {
   getAll: async () => {
     const response = await api.get('/services')
@@ -243,7 +335,6 @@ export const servicesAPI = {
   }
 }
 
-// Notifications API
 export const notificationsAPI = {
   getAll: async () => {
     const response = await api.get('/notifications')
@@ -261,7 +352,6 @@ export const notificationsAPI = {
   }
 }
 
-// Cashflow API
 export const cashflowAPI = {
   getAll: async () => {
     const response = await api.get('/cashflow')

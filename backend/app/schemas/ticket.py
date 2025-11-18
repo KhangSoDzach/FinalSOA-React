@@ -1,91 +1,79 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from app.models.ticket import TicketCategory, TicketPriority, TicketStatus
+
+# --- CÁC MODELS CƠ BẢN CHO MỐI QUAN HỆ LỒNG NHAU (USER) ---
+
+class UserBase(BaseModel):
+    id: int
+    username: str
+    
+    class Config:
+        from_attributes = True
+
+# --- 1. TICKET REQUEST MODELS ---
 
 class TicketBase(BaseModel):
     title: str
     description: str
     category: TicketCategory
     priority: TicketPriority = TicketPriority.NORMAL
-    location: Optional[str] = None
-    building: Optional[str] = None
-    floor: Optional[str] = None
-    apartment: Optional[str] = None
-
+    
 class TicketCreate(TicketBase):
     pass
 
 class TicketUpdate(BaseModel):
+    # Các trường User có thể cập nhật
     title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[TicketCategory] = None
     priority: Optional[TicketPriority] = None
+    
+    # Các trường Admin có thể cập nhật
     status: Optional[TicketStatus] = None
-    location: Optional[str] = None
-    building: Optional[str] = None
-    floor: Optional[str] = None
-    apartment: Optional[str] = None
-    assigned_to: Optional[int] = None
+    assigned_to: Optional[int] = None 
     resolution_notes: Optional[str] = None
-
-class TicketResponse(TicketBase):
-    id: int
-    ticket_number: str
-    user_id: int
-    status: TicketStatus
-    assigned_to: Optional[int] = None
-    assigned_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[int] = None
-    resolution_notes: Optional[str] = None
-    rating: Optional[int] = None
-    feedback: Optional[str] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
+    
 class TicketAssign(BaseModel):
-    assigned_to: int
+    assigned_to: int 
 
 class TicketResolve(BaseModel):
     resolution_notes: str
 
-class TicketFeedback(BaseModel):
-    rating: int  # 1-5
-    feedback: Optional[str] = None
+# --- 2. TICKET RESPONSE MODEL (Tổng hợp và Tối giản) ---
 
-class TicketAttachmentResponse(BaseModel):
+class TicketResponse(TicketBase):
+    """
+    Model Response chính, chỉ chứa thông tin cốt lõi và mối quan hệ người dùng.
+    Attachments và Logs đã bị loại bỏ.
+    """
     id: int
-    ticket_id: int
-    file_name: str
-    file_url: str
-    file_type: str
-    file_size: int
-    uploaded_by: int
-    uploaded_at: datetime
-
+    user_id: int 
+    
+    # Mối quan hệ User lồng nhau
+    user: Optional[UserBase] = None 
+    assigned_user: Optional[UserBase] = None
+    resolved_by_user: Optional[UserBase] = None
+    
+    status: TicketStatus
+    assigned_to: Optional[int] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[int] = None
+    resolution_notes: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
-class TicketLogResponse(BaseModel):
-    id: int
-    ticket_id: int
-    action: str
-    description: str
-    old_value: Optional[str] = None
-    new_value: Optional[str] = None
-    created_by: int
-    created_at: datetime
+# TicketDetailResponse đã bị loại bỏ vì nó giống hệt TicketResponse
 
-    class Config:
-        from_attributes = True
+# --- 3. THỐNG KÊ ---
 
 class TicketStats(BaseModel):
     total_tickets: int
     open_tickets: int
     resolved_tickets: int
-    average_resolution_time: float
-    satisfaction_rating: float
+    # Chỉ giữ lại thời gian giải quyết trung bình (dựa trên created_at và resolved_at)
+    average_resolution_time_hours: Optional[float] = None 
+    # Loại bỏ satisfaction_rating
+    satisfaction_rating: Optional[float] = None

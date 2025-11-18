@@ -3,9 +3,9 @@ from sqlmodel import Session, select, func
 from typing import List, Optional
 from app.core.database import get_session
 from app.api.dependencies import get_current_user, get_current_admin_user
-from app.models.user import User
-from app.schemas.user import UserResponse, UserUpdate, UserCreate
-from app.core.security import get_password_hash
+from app.models.user import User,OccupierType
+from app.schemas.user import UserResponse, UserUpdate, UserCreate,PasswordChange
+from app.core.security import get_password_hash,verify_password
 
 router = APIRouter()
 
@@ -20,8 +20,22 @@ async def update_current_user(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Update current user information"""
-    update_data = user_update.dict(exclude_unset=True)
+    """
+    Update current user information. 
+    Users can only update specific fields (e.g., full_name, email, phone).
+    """
+    # 🌟 SỬA ĐỔI: Loại trừ các trường nhạy cảm hoặc do Admin quản lý
+    update_data = user_update.dict(
+        exclude_unset=True,
+        exclude={
+            "role", 
+            "is_active", 
+            "balance",
+            "apartment_number",
+            "building",
+            "occupier"
+        }
+    )
     
     for field, value in update_data.items():
         setattr(current_user, field, value)
@@ -31,6 +45,32 @@ async def update_current_user(
     session.refresh(current_user)
     
     return current_user
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu cũ không chính xác."
+        )
+    
+    if len(data.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu mới phải có ít nhất 6 ký tự."
+        )
+
+    current_user.hashed_password = get_password_hash(data.new_password)
+    
+    session.add(current_user)
+    session.commit()
+    
+    return {"message": "Đổi mật khẩu thành công"}
+# --- Các routes khác giữ nguyên ---
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -166,7 +206,8 @@ async def get_users_stats(
     session: Session = Depends(get_session)
 ):
     """Get users statistics (admin only)"""
-    # Total users by role
+    
+    # Total users summary
     total_users = session.exec(select(func.count(User.id))).one()
     total_residents = session.exec(
         select(func.count(User.id)).where(User.role == "user")
@@ -176,6 +217,24 @@ async def get_users_stats(
     ).one()
     total_inactive = session.exec(
         select(func.count(User.id)).where(User.is_active == False)
+    ).one()
+    
+    # 🌟 NEW STATS: Users by Occupier Type (only for residents)
+    
+    # Count Owners
+    total_owners = session.exec(
+        select(func.count(User.id)).where(
+            User.role == "user",
+            User.occupier == OccupierType.OWNER  # So sánh với Enum value
+        )
+    ).one()
+    
+    # Count Renters
+    total_renters = session.exec(
+        select(func.count(User.id)).where(
+            User.role == "user",
+            User.occupier == OccupierType.RENTER  # So sánh với Enum value
+        )
     ).one()
     
     # Users by building
@@ -195,5 +254,11 @@ async def get_users_stats(
         "total_residents": total_residents,
         "total_active": total_active,
         "total_inactive": total_inactive,
+        # 🌟 NEW STATS IN RESPONSE
+        "occupier_stats": {
+            "owners": total_owners,
+            "renters": total_renters,
+            "unassigned": total_residents - (total_owners + total_renters) # Để đảm bảo tổng luôn đúng nếu có giá trị khác
+        },
         "buildings": buildings_data
     }

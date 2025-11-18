@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
-from app.models.bill import BillType, BillStatus, PaymentMethod, PaymentStatus
+from app.models.bill import BillType, BillStatus, PaymentStatus
 
 class BillBase(BaseModel):
     title: str
@@ -26,8 +26,10 @@ class BillResponse(BillBase):
     bill_number: str
     user_id: int
     status: BillStatus
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    # ĐÃ SỬA: Thay đổi thành Optional[datetime] để khớp với model (nếu trường này đã bị xóa)
+    created_at: Optional[datetime] = None 
+    # Nếu updated_at cũng bị xóa khỏi model, nó cũng nên là Optional ở đây
+    updated_at: Optional[datetime] = None 
     paid_at: Optional[datetime] = None
 
     class Config:
@@ -35,7 +37,6 @@ class BillResponse(BillBase):
 
 class PaymentBase(BaseModel):
     amount: Decimal
-    payment_method: PaymentMethod
     notes: Optional[str] = None
 
 class PaymentCreate(PaymentBase):
@@ -46,22 +47,33 @@ class PaymentUpdate(BaseModel):
     transaction_id: Optional[str] = None
     notes: Optional[str] = None
 
-class PaymentResponse(PaymentBase):
-    id: int
-    payment_number: str
-    user_id: int
-    bill_id: int
+class PaymentResponse(BaseModel):
+    id: int 
+    bill_id: Optional[int] = None
+    user_id: int 
+    amount: Decimal
     status: PaymentStatus
-    transaction_id: Optional[str] = None
-    receipt_url: Optional[str] = None
-    evidence_url: Optional[str] = None
-    created_at: datetime
-    confirmed_at: Optional[datetime] = None
-    confirmed_by: Optional[int] = None
+    message: Optional[str] = None
+    payment_date: datetime
 
     class Config:
         from_attributes = True
 
-class PaymentConfirm(BaseModel):
-    status: PaymentStatus
-    notes: Optional[str] = None
+# --- SCHEMAS FOR OTP PAYMENT ---
+
+class PaymentRequest(BaseModel):
+    bill_id: int
+
+class OTPVerify(BaseModel):
+    payment_id: int 
+    otp: str
+
+class PaymentRequestResponse(BaseModel):
+    payment_id: int 
+    message: str
+    bill_amount: Decimal
+    # Giả định trường này không còn trong model nhưng frontend vẫn cần 
+    otp_valid_until: datetime
+
+    class Config:
+        from_attributes = True

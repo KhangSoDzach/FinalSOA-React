@@ -6,15 +6,14 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import asyncio
 from sqlmodel import SQLModel, create_engine, text
 from app.core.config import settings
 from app.models import *  # Import all models
 
-async def reset_database():
+def reset_database():
     """Reset database by dropping and recreating all tables"""
     
-    print(f"Connecting to database: {settings.database_url}")
+    print(f"🔗 Connecting to database: {settings.database_url}")
     engine = create_engine(settings.database_url, echo=True)
     
     try:
@@ -22,25 +21,17 @@ async def reset_database():
         with engine.begin() as conn:
             print("🗑️  Dropping all tables and types...")
             
-            # Drop all enums first
-            conn.execute(text("DROP TYPE IF EXISTS userrole CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS billtype CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS billstatus CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS paymentmethod CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS paymentstatus CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS cashflowtype CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS cashflowcategory CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS notificationtype CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS notificationstatus CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS responsetype CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS ticketstatus CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS ticketpriority CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS ticketcategory CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS servicestatus CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS servicecategory CASCADE;"))
-            conn.execute(text("DROP TYPE IF EXISTS bookingstatus CASCADE;"))
+            # Drop all enums first (if they exist)
+            enums = [
+                "userrole", "billtype", "billstatus", "paymentmethod", "paymentstatus",
+                "cashflowtype", "cashflowcategory", "notificationtype", "notificationstatus",
+                "responsetype", "ticketstatus", "ticketpriority", "ticketcategory",
+                "servicestatus", "servicecategory", "bookingstatus"
+            ]
+            for enum in enums:
+                conn.execute(text(f"DROP TYPE IF EXISTS {enum} CASCADE;"))
             
-            # Drop all tables
+            # Drop all tables and recreate schema
             conn.execute(text("DROP SCHEMA public CASCADE;"))
             conn.execute(text("CREATE SCHEMA public;"))
             conn.execute(text("GRANT ALL ON SCHEMA public TO postgres;"))
@@ -58,11 +49,8 @@ async def reset_database():
         print("1. python scripts/seed_db.py  # To add sample data")
         print("2. python run.py              # To start the server")
         
-        return True
-        
     except Exception as e:
         print(f"❌ Error resetting database: {e}")
-        return False
 
 if __name__ == "__main__":
-    asyncio.run(reset_database())
+    reset_database()
