@@ -50,5 +50,13 @@ class Ticket(SQLModel, table=True):
 
 
     # Relationships
-    user: Optional["User"] = Relationship(back_populates="tickets", sa_relationship_kwargs={"foreign_keys": "[Ticket.user_id]"})
-
+    user: Optional["User"] = Relationship(
+        back_populates="tickets", 
+        sa_relationship_kwargs={"foreign_keys": "[Ticket.user_id]"}
+    )
+    assigned_user: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Ticket.assigned_to]"}
+    )
+    resolved_by_user: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Ticket.resolved_by]"}
+    )

@@ -13,6 +13,7 @@ import Login from './pages/Login'
 import ApartmentsManagement from './pages/admin/ApartmentsManagement'
 import UsersManagement from './pages/admin/UsersManagement'
 import VehiclesManagement from './pages/admin/VehiclesManagement'
+import TicketsManagement from './pages/admin/TicketsManagement'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute } from './components/AdminRoute'
 import { useAuth } from './contexts/AuthContext'
@@ -54,6 +55,7 @@ function App() {
           <Route path="apartments" element={<AdminRoute><ApartmentsManagement /></AdminRoute>} />
           <Route path="users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
           <Route path="admin/vehicles" element={<AdminRoute><VehiclesManagement /></AdminRoute>} />
+          <Route path="admin/tickets" element={<AdminRoute><TicketsManagement /></AdminRoute>} />
         </Route>
       </Routes>
     </Box>

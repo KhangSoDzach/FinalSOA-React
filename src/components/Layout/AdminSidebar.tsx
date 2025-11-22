@@ -27,7 +27,7 @@ const adminItems = [
   { name: 'Users', icon: FiUsers, path: '/users' },
   { name: 'Vehicles', icon: FiTruck, path: '/admin/vehicles' },
   { name: 'Bills', icon: FiFileText, path: '/bills' },
-  { name: 'Tickets', icon: FiMessageSquare, path: '/tickets' },
+  { name: 'Tickets', icon: FiMessageSquare, path: '/admin/tickets' },
 ]
 
 const bottomItems = [

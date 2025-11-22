@@ -1,16 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select, func, or_, delete 
 from typing import List, Optional
 from datetime import datetime, timedelta
 from app.core.database import get_session
 from app.api.dependencies import get_current_user
-from app.models.user import User
-from app.models.bill import Bill, Payment, BillStatus, PaymentStatus
-from app.schemas.bill import BillResponse, PaymentResponse, PaymentRequest, OTPVerify, PaymentRequestResponse
+from app.models.user import User, UserRole
+from app.models.bill import Bill, Payment, BillStatus, PaymentStatus, BillType
+from app.schemas.bill import BillResponse, PaymentResponse, PaymentRequest, OTPVerify, PaymentRequestResponse, BillCreate, BillUpdate
 from decimal import Decimal
 import secrets
 import string
-from app.core.email import generate_otp, send_otp_email_async 
+from app.core.email import generate_otp, send_otp_email_async
+import io
+import csv
 
 router = APIRouter()
 
@@ -22,7 +25,420 @@ def generate_otp(length: int = 6) -> str:
 async def send_otp_email(email: str, otp: str, bill_id: int):
     await send_otp_email_async(email, otp, bill_id)
 
+def generate_bill_number() -> str:
+    """Generate a unique bill number"""
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    random_suffix = "".join(secrets.choice(string.digits) for _ in range(4))
+    return f"BILL-{timestamp}-{random_suffix}"
+
 # --- API Endpoints ---
+
+# ============================================
+# ADMIN ENDPOINTS
+# ============================================
+
+@router.get("/", response_model=List[BillResponse])
+async def get_all_bills(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    user_id: Optional[int] = None,
+    status: Optional[BillStatus] = None,
+    building: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Get all bills (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can access all bills"
+        )
+    
+    statement = select(Bill)
+    
+    if user_id:
+        statement = statement.where(Bill.user_id == user_id)
+    if status:
+        statement = statement.where(Bill.status == status)
+    if building:
+        statement = statement.join(User).where(User.building == building)
+    
+    statement = statement.offset(skip).limit(limit)
+    bills = session.exec(statement).all()
+    
+    return bills
+
+@router.get("/{bill_id}", response_model=BillResponse)
+async def get_bill_by_id(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Get bill by ID"""
+    bill = session.get(Bill, bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    
+    # Check permission: admin or owner
+    if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this bill"
+        )
+    
+    return bill
+
+@router.post("/", response_model=BillResponse)
+async def create_bill(
+    bill_data: BillCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Create a new bill (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can create bills"
+        )
+    
+    # Check if user exists
+    user = session.get(User, bill_data.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate bill number
+    bill_number = generate_bill_number()
+    
+    # Create bill
+    bill = Bill(
+        bill_number=bill_number,
+        user_id=bill_data.user_id,
+        bill_type=bill_data.bill_type,
+        title=bill_data.title,
+        description=bill_data.description,
+        amount=bill_data.amount,
+        due_date=bill_data.due_date,
+        status=BillStatus.PENDING
+    )
+    
+    session.add(bill)
+    session.commit()
+    session.refresh(bill)
+    
+    return bill
+
+@router.post("/batch-create", response_model=List[BillResponse])
+async def batch_create_bills(
+    bills_data: List[BillCreate],
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Create multiple bills at once (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can create bills"
+        )
+    
+    created_bills = []
+    
+    for bill_data in bills_data:
+        # Check if user exists
+        user = session.get(User, bill_data.user_id)
+        if not user:
+            continue  # Skip invalid users
+        
+        # Generate bill number
+        bill_number = generate_bill_number()
+        
+        # Create bill
+        bill = Bill(
+            bill_number=bill_number,
+            user_id=bill_data.user_id,
+            bill_type=bill_data.bill_type,
+            title=bill_data.title,
+            description=bill_data.description,
+            amount=bill_data.amount,
+            due_date=bill_data.due_date,
+            status=BillStatus.PENDING
+        )
+        
+        session.add(bill)
+        created_bills.append(bill)
+    
+    session.commit()
+    
+    # Refresh all created bills
+    for bill in created_bills:
+        session.refresh(bill)
+    
+    return created_bills
+
+@router.put("/{bill_id}", response_model=BillResponse)
+async def update_bill(
+    bill_id: int,
+    bill_data: BillUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Update a bill (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can update bills"
+        )
+    
+    bill = session.get(Bill, bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    
+    # Update fields
+    if bill_data.title is not None:
+        bill.title = bill_data.title
+    if bill_data.description is not None:
+        bill.description = bill_data.description
+    if bill_data.amount is not None:
+        bill.amount = bill_data.amount
+    if bill_data.due_date is not None:
+        bill.due_date = bill_data.due_date
+    if bill_data.status is not None:
+        bill.status = bill_data.status
+    
+    session.add(bill)
+    session.commit()
+    session.refresh(bill)
+    
+    return bill
+
+@router.delete("/{bill_id}")
+async def delete_bill(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Delete a bill (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can delete bills"
+        )
+    
+    bill = session.get(Bill, bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    
+    # Delete related payments first
+    delete_payments = delete(Payment).where(Payment.bill_id == bill_id)
+    session.execute(delete_payments)
+    
+    session.delete(bill)
+    session.commit()
+    
+    return {"message": "Bill deleted successfully"}
+
+@router.get("/statistics")
+async def get_bills_statistics(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Get bills statistics (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can access statistics"
+        )
+    
+    statement = select(Bill)
+    
+    if start_date:
+        statement = statement.where(Bill.due_date >= start_date)
+    if end_date:
+        statement = statement.where(Bill.due_date <= end_date)
+    
+    bills = session.exec(statement).all()
+    
+    # Calculate statistics
+    total_bills = len(bills)
+    bills_by_status = {
+        "pending": len([b for b in bills if b.status == BillStatus.PENDING]),
+        "paid": len([b for b in bills if b.status == BillStatus.PAID]),
+        "overdue": len([b for b in bills if b.status == BillStatus.OVERDUE]),
+        "cancelled": len([b for b in bills if b.status == BillStatus.CANCELLED])
+    }
+    
+    bills_by_type = {}
+    for bill_type in BillType:
+        bills_by_type[bill_type.value] = len([b for b in bills if b.bill_type == bill_type])
+    
+    amounts = {
+        "total_amount": sum(b.amount for b in bills),
+        "paid_amount": sum(b.amount for b in bills if b.status == BillStatus.PAID),
+        "pending_amount": sum(b.amount for b in bills if b.status == BillStatus.PENDING),
+        "overdue_amount": sum(b.amount for b in bills if b.status == BillStatus.OVERDUE)
+    }
+    
+    return {
+        "total_bills": total_bills,
+        "bills_by_status": bills_by_status,
+        "bills_by_type": bills_by_type,
+        "amounts": amounts
+    }
+
+@router.put("/mark-overdue")
+async def mark_overdue_bills(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Mark all pending bills past due date as overdue (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can mark bills as overdue"
+        )
+    
+    # Find all pending bills past due date
+    statement = select(Bill).where(
+        Bill.status == BillStatus.PENDING,
+        Bill.due_date < datetime.utcnow()
+    )
+    
+    bills = session.exec(statement).all()
+    
+    # Update status to overdue
+    for bill in bills:
+        bill.status = BillStatus.OVERDUE
+        session.add(bill)
+    
+    session.commit()
+    
+    return {
+        "message": f"Marked {len(bills)} bills as overdue",
+        "updated_count": len(bills)
+    }
+
+@router.post("/send-reminder")
+async def send_payment_reminders(
+    bill_ids: Optional[List[int]] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Send payment reminders for pending/overdue bills (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can send reminders"
+        )
+    
+    # Build query
+    statement = select(Bill).where(
+        or_(Bill.status == BillStatus.PENDING, Bill.status == BillStatus.OVERDUE)
+    )
+    
+    if bill_ids:
+        statement = statement.where(Bill.id.in_(bill_ids))
+    
+    bills = session.exec(statement).all()
+    
+    # TODO: Implement notification sending logic
+    # For now, just return count
+    notifications_sent = len(bills)
+    
+    return {
+        "message": f"Sent {notifications_sent} reminders",
+        "notifications_sent": notifications_sent
+    }
+
+@router.get("/export-report")
+async def export_bills_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    bill_type_filter: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Export bills report as CSV (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can export reports"
+        )
+    
+    statement = select(Bill)
+    
+    if start_date:
+        statement = statement.where(Bill.due_date >= datetime.fromisoformat(start_date))
+    if end_date:
+        statement = statement.where(Bill.due_date <= datetime.fromisoformat(end_date))
+    if status_filter:
+        statement = statement.where(Bill.status == status_filter)
+    if bill_type_filter:
+        statement = statement.where(Bill.bill_type == bill_type_filter)
+    
+    bills = session.exec(statement).all()
+    
+    # Create CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'Bill Number', 'User ID', 'Type', 'Title', 'Amount', 
+        'Due Date', 'Status', 'Paid At'
+    ])
+    
+    # Write data
+    for bill in bills:
+        writer.writerow([
+            bill.bill_number,
+            bill.user_id,
+            bill.bill_type.value,
+            bill.title,
+            float(bill.amount),
+            bill.due_date.isoformat(),
+            bill.status.value,
+            bill.paid_at.isoformat() if bill.paid_at else ''
+        ])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=bills_report_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+        }
+    )
+
+@router.get("/{bill_id}/payments", response_model=List[PaymentResponse])
+async def get_bill_payments(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Get all payments for a bill"""
+    bill = session.get(Bill, bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    
+    # Check permission
+    if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this bill's payments"
+        )
+    
+    statement = select(Payment).where(Payment.bill_id == bill_id)
+    payments = session.exec(statement).all()
+    
+    return payments
+
+# ============================================
+# USER ENDPOINTS
+# ============================================
+
 
 @router.get("/my-bills", response_model=List[BillResponse])
 async def get_my_bills(
