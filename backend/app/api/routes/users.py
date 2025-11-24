@@ -3,9 +3,9 @@ from sqlmodel import Session, select, func
 from typing import List, Optional
 from app.core.database import get_session
 from app.api.dependencies import get_current_user, get_current_admin_user
-from app.models.user import User,OccupierType
-from app.schemas.user import UserResponse, UserUpdate, UserCreate,PasswordChange
-from app.core.security import get_password_hash,verify_password
+from app.models.user import User, OccupierType, UserRole
+from app.schemas.user import UserResponse, UserUpdate, UserCreate, PasswordChange
+from app.core.security import get_password_hash, verify_password
 
 router = APIRouter()
 
@@ -115,9 +115,10 @@ async def create_user(
 @router.get("/", response_model=List[UserResponse])
 async def get_users(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=1000),
     building: Optional[str] = None,
     role: Optional[str] = None,
+    only_residents: bool = Query(False),
     current_user: User = Depends(get_current_admin_user),
     session: Session = Depends(get_session)
 ):
@@ -128,8 +129,10 @@ async def get_users(
         statement = statement.where(User.building == building)
     if role:
         statement = statement.where(User.role == role)
+    if only_residents:
+        statement = statement.where(User.role == UserRole.USER)
     
-    statement = statement.offset(skip).limit(limit)
+    statement = statement.offset(skip).limit(limit).order_by(User.full_name)
     users = session.exec(statement).all()
     
     return users

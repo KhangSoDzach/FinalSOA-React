@@ -20,17 +20,19 @@ async def get_notifications(
     limit: int = Query(100, ge=1, le=100),
     type: Optional[str] = None,
     status: Optional[NotificationStatus] = None,
+    unread_only: bool = False,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """Get notifications for current user"""
     statement = select(Notification)
     
-    # Filter by target audience or show all public notifications
+    # Filter by target audience, target user, or show all public notifications
     statement = statement.where(
         (Notification.target_audience == "all") |
         (Notification.target_audience == current_user.building) |
-        (Notification.target_audience == f"apartment_{current_user.apartment_number}")
+        (Notification.target_audience == f"apartment_{current_user.apartment_number}") |
+        (Notification.target_user_id == current_user.id)
     )
     
     if type:
@@ -43,6 +45,19 @@ async def get_notifications(
     
     statement = statement.offset(skip).limit(limit).order_by(Notification.created_at.desc())
     notifications = session.exec(statement).all()
+    
+    # Filter for unread if requested
+    if unread_only:
+        unread_notifications = []
+        for notif in notifications:
+            read_statement = select(NotificationRead).where(
+                NotificationRead.notification_id == notif.id,
+                NotificationRead.user_id == current_user.id
+            )
+            read_record = session.exec(read_statement).first()
+            if not read_record:
+                unread_notifications.append(notif)
+        return unread_notifications
     
     return notifications
 
@@ -75,15 +90,28 @@ async def create_notification(
     session: Session = Depends(get_session)
 ):
     """Create new notification (admin only)"""
+    notification_data = notification_create.dict()
+    
+    # If target_user_id is set, it's an individual notification
+    if notification_create.target_user_id:
+        notification_data['target_audience'] = ''
+    elif not notification_data.get('target_audience'):
+        # Default to 'all' if no target is specified
+        notification_data['target_audience'] = 'all'
+    
+    # If no status provided and no scheduled_at, send immediately
+    if not notification_create.scheduled_at and not notification_create.status:
+        notification_data['status'] = NotificationStatus.SENT
+        notification_data['sent_at'] = datetime.utcnow()
+    elif notification_create.scheduled_at:
+        notification_data['status'] = NotificationStatus.SCHEDULED
+    elif not notification_create.status:
+        notification_data['status'] = NotificationStatus.DRAFT
+    
     notification = Notification(
         created_by=current_user.id,
-        **notification_create.dict()
+        **notification_data
     )
-    
-    # If scheduled_at is not set and status is not draft, send immediately
-    if not notification_create.scheduled_at and notification.status != NotificationStatus.DRAFT:
-        notification.status = NotificationStatus.SENT
-        notification.sent_at = datetime.utcnow()
     
     session.add(notification)
     session.commit()
@@ -107,11 +135,12 @@ async def get_notification(
     
     # Check if user has access to this notification
     if current_user.role.value == "user":
-        # Check target audience
+        # Check target audience or target user
         has_access = (
             notification.target_audience == "all" or
             notification.target_audience == current_user.building or
-            notification.target_audience == f"apartment_{current_user.apartment_number}"
+            notification.target_audience == f"apartment_{current_user.apartment_number}" or
+            notification.target_user_id == current_user.id
         )
         if not has_access:
             raise HTTPException(

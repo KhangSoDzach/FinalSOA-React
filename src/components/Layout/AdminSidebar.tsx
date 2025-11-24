@@ -8,7 +8,8 @@ import {
   FiSettings, 
   FiUser,
   FiTool,
-  FiUsers
+  FiUsers,
+  FiBell
 } from 'react-icons/fi'
 import { BsBuilding } from 'react-icons/bs'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext'
 const sidebarItems = [
   { name: 'Home', icon: FiHome, path: '/' },
   { name: 'Bills', icon: FiFileText, path: '/bills' },
+  { name: 'Notifications', icon: FiBell, path: '/notifications' },
   { name: 'Feedback', icon: FiMessageSquare, path: '/tickets' },
   { name: 'Vehicle Card', icon: FiTruck, path: '/vehicles' },
   { name: 'Utilities', icon: FiTool, path: '/utilities' },
@@ -28,6 +30,7 @@ const adminItems = [
   { name: 'Vehicles', icon: FiTruck, path: '/admin/vehicles' },
   { name: 'Bills', icon: FiFileText, path: '/bills' },
   { name: 'Tickets', icon: FiMessageSquare, path: '/admin/tickets' },
+  { name: 'Notifications', icon: FiBell, path: '/admin/notifications' },
 ]
 
 const bottomItems = [

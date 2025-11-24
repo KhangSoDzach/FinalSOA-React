@@ -10,10 +10,12 @@ import Utilities from './pages/Utilities'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Notifications from './pages/Notifications'
 import ApartmentsManagement from './pages/admin/ApartmentsManagement'
 import UsersManagement from './pages/admin/UsersManagement'
 import VehiclesManagement from './pages/admin/VehiclesManagement'
 import TicketsManagement from './pages/admin/TicketsManagement'
+import NotificationsManagement from './pages/admin/NotificationsManagement'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute } from './components/AdminRoute'
 import { useAuth } from './contexts/AuthContext'
@@ -50,12 +52,14 @@ function App() {
           <Route path="tickets" element={<Tickets />} />
           <Route path="vehicles" element={<Vehicles />} />
           <Route path="utilities" element={<Utilities />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="apartments" element={<AdminRoute><ApartmentsManagement /></AdminRoute>} />
           <Route path="users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
           <Route path="admin/vehicles" element={<AdminRoute><VehiclesManagement /></AdminRoute>} />
           <Route path="admin/tickets" element={<AdminRoute><TicketsManagement /></AdminRoute>} />
+          <Route path="admin/notifications" element={<AdminRoute><NotificationsManagement /></AdminRoute>} />
         </Route>
       </Routes>
     </Box>

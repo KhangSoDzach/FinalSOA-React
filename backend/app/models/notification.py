@@ -23,7 +23,8 @@ class Notification(SQLModel, table=True):
     content: str
     type: NotificationType
     priority: int = Field(default=1)  # 1=low, 2=normal, 3=high, 4=urgent
-    target_audience: str  # "all", "building_a", "floor_1", "apartment_101", etc.
+    target_audience: str = Field(default="")  # "all", "building_a", "floor_1", "apartment_101", etc.
+    target_user_id: Optional[int] = Field(default=None, foreign_key="user.id")  # For individual notifications
     status: NotificationStatus = Field(default=NotificationStatus.DRAFT)
     
     # Scheduling

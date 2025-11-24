@@ -7,12 +7,14 @@ import {
   FiTruck, 
   FiSettings, 
   FiUser,
-  FiTool
+  FiTool,
+  FiBell
 } from 'react-icons/fi'
 
 const sidebarItems = [
   { name: 'Home', icon: FiHome, path: '/' },
   { name: 'Bills', icon: FiFileText, path: '/bills' },
+  { name: 'Notifications', icon: FiBell, path: '/notifications' },
   { name: 'Feedback', icon: FiMessageSquare, path: '/tickets' },
   { name: 'Vehicle Card', icon: FiTruck, path: '/vehicles' },
   { name: 'Utilities', icon: FiTool, path: '/utilities' },

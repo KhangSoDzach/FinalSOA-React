@@ -8,7 +8,8 @@ class NotificationBase(BaseModel):
     content: str
     type: NotificationType
     priority: int = 1
-    target_audience: str = "all"
+    target_audience: str = ""
+    target_user_id: Optional[int] = None  # For individual notifications
     push_notification: bool = True
     sms: bool = False
     email: bool = False
@@ -18,6 +19,7 @@ class NotificationCreate(NotificationBase):
     scheduled_at: Optional[datetime] = None
     event_date: Optional[datetime] = None
     event_location: Optional[str] = None
+    status: Optional[NotificationStatus] = None
 
 class NotificationUpdate(BaseModel):
     title: Optional[str] = None
@@ -25,6 +27,7 @@ class NotificationUpdate(BaseModel):
     type: Optional[NotificationType] = None
     priority: Optional[int] = None
     target_audience: Optional[str] = None
+    target_user_id: Optional[int] = None
     status: Optional[NotificationStatus] = None
     scheduled_at: Optional[datetime] = None
     event_date: Optional[datetime] = None
@@ -37,6 +40,7 @@ class NotificationResponse(NotificationBase):
     sent_at: Optional[datetime] = None
     event_date: Optional[datetime] = None
     event_location: Optional[str] = None
+    target_user_id: Optional[int] = None
     created_by: int
     created_at: datetime
     updated_at: Optional[datetime] = None
