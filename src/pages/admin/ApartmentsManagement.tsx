@@ -453,7 +453,9 @@ const ApartmentsManagement: React.FC = () => {
                 <Td>{apartment.area}m²</Td>
                 <Td>{apartment.bedrooms}/{apartment.bathrooms}</Td>
                 <Td>
-                  {apartment.monthly_fee > 0 ? (
+                  {apartment.resident?.occupier === 'owner' ? (
+                    <Text color="gray.400" fontSize="sm">Chủ hộ</Text>
+                  ) : apartment.monthly_fee > 0 ? (
                     <Text fontWeight="medium" color="teal.600">
                       {apartment.monthly_fee.toLocaleString()} VND
                     </Text>
