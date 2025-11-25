@@ -1,5 +1,5 @@
 """
-Script to seed apartments data
+Script to seed apartments data with resident assignments
 """
 import sys
 import os
@@ -10,9 +10,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlmodel import Session, select
 from app.core.database import engine
 from app.models.apartment import Apartment, ApartmentStatus
+from app.models.user import User
 
 def seed_apartments():
-    """Seed apartments data"""
+    """Seed apartments data and link with existing users"""
     with Session(engine) as session:
         # Check if apartments already exist
         statement = select(Apartment)
@@ -32,6 +33,7 @@ def seed_apartments():
                 area=65.5,
                 bedrooms=2,
                 bathrooms=1,
+                monthly_fee=2500000,
                 status=ApartmentStatus.AVAILABLE,
                 description="Căn góc, view công viên"
             ),
@@ -42,6 +44,7 @@ def seed_apartments():
                 area=58.0,
                 bedrooms=2,
                 bathrooms=1,
+                monthly_fee=2200000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -51,6 +54,7 @@ def seed_apartments():
                 area=65.5,
                 bedrooms=2,
                 bathrooms=1,
+                monthly_fee=2600000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -60,6 +64,7 @@ def seed_apartments():
                 area=58.0,
                 bedrooms=2,
                 bathrooms=1,
+                monthly_fee=2300000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -69,6 +74,7 @@ def seed_apartments():
                 area=85.5,
                 bedrooms=3,
                 bathrooms=2,
+                monthly_fee=3500000,
                 status=ApartmentStatus.AVAILABLE,
                 description="Căn penthouse, 3 phòng ngủ"
             ),
@@ -80,6 +86,7 @@ def seed_apartments():
                 area=70.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=2800000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -89,6 +96,7 @@ def seed_apartments():
                 area=70.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=2800000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -98,6 +106,7 @@ def seed_apartments():
                 area=70.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=2900000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -107,6 +116,7 @@ def seed_apartments():
                 area=70.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=2900000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -116,6 +126,7 @@ def seed_apartments():
                 area=95.0,
                 bedrooms=3,
                 bathrooms=2,
+                monthly_fee=4000000,
                 status=ApartmentStatus.AVAILABLE,
                 description="Căn duplex, view sông"
             ),
@@ -127,6 +138,7 @@ def seed_apartments():
                 area=55.0,
                 bedrooms=1,
                 bathrooms=1,
+                monthly_fee=1800000,
                 status=ApartmentStatus.AVAILABLE,
                 description="Studio, phù hợp 1-2 người"
             ),
@@ -137,6 +149,7 @@ def seed_apartments():
                 area=55.0,
                 bedrooms=1,
                 bathrooms=1,
+                monthly_fee=1800000,
                 status=ApartmentStatus.MAINTENANCE,
                 description="Đang sửa chữa"
             ),
@@ -147,6 +160,7 @@ def seed_apartments():
                 area=75.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=3000000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -156,6 +170,7 @@ def seed_apartments():
                 area=75.0,
                 bedrooms=2,
                 bathrooms=2,
+                monthly_fee=3000000,
                 status=ApartmentStatus.AVAILABLE,
             ),
             Apartment(
@@ -165,6 +180,7 @@ def seed_apartments():
                 area=100.0,
                 bedrooms=3,
                 bathrooms=3,
+                monthly_fee=4500000,
                 status=ApartmentStatus.AVAILABLE,
                 description="Căn hộ cao cấp, full nội thất"
             ),
@@ -174,7 +190,66 @@ def seed_apartments():
             session.add(apartment)
         
         session.commit()
-        print(f"✅ Created {len(apartments)} apartments successfully!")
+        
+        # Now link apartments with users
+        print("\nLinking apartments with users...")
+        
+        # Mapping apartment_number to user info
+        apartment_user_mapping = {
+            "A101": "user_a101",
+            "A102": "user_a102",
+            "A201": "user_a201",
+            "A202": "user_a202",
+            "A301": "user_a301",
+            "B101": "user_b101",
+            "B102": "user_b102",
+            "B201": "user_b201",
+            "B202": "user_b202",
+            "B301": "user_b301",
+            "C101": "user_c101",
+            "C201": "user_c201",
+            "C202": "user_c202",
+        }
+        
+        for apt_number, username in apartment_user_mapping.items():
+            # Find apartment
+            apartment = session.exec(
+                select(Apartment).where(Apartment.apartment_number == apt_number)
+            ).first()
+            
+            # Find user
+            user = session.exec(
+                select(User).where(User.username == username)
+            ).first()
+            
+            if apartment and user:
+                # Link them
+                apartment.resident_id = user.id
+                apartment.status = ApartmentStatus.OCCUPIED
+                session.add(apartment)
+                print(f"  ✅ Linked {apt_number} with {user.full_name} ({user.occupier})")
+            elif apartment:
+                print(f"  ⚠️  User {username} not found for apartment {apt_number}")
+            else:
+                print(f"  ⚠️  Apartment {apt_number} not found")
+        
+        session.commit()
+        
+        # Print summary
+        total_apartments = session.exec(select(Apartment)).all()
+        occupied = [a for a in total_apartments if a.status == ApartmentStatus.OCCUPIED]
+        available = [a for a in total_apartments if a.status == ApartmentStatus.AVAILABLE]
+        maintenance = [a for a in total_apartments if a.status == ApartmentStatus.MAINTENANCE]
+        
+        print(f"\n✅ Created {len(apartments)} apartments successfully!")
+        print(f"\n📊 Summary:")
+        print(f"   - Total: {len(total_apartments)}")
+        print(f"   - Occupied: {len(occupied)}")
+        print(f"   - Available: {len(available)}")
+        print(f"   - Maintenance: {len(maintenance)}")
+        print(f"   - Building A: {len([a for a in total_apartments if a.building == 'A'])}")
+        print(f"   - Building B: {len([a for a in total_apartments if a.building == 'B'])}")
+        print(f"   - Building C: {len([a for a in total_apartments if a.building == 'C'])}")
 
 if __name__ == "__main__":
     print("Seeding apartments data...")

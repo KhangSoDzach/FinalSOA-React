@@ -10,6 +10,7 @@ class ApartmentBase(BaseModel):
     area: float
     bedrooms: int = 1
     bathrooms: int = 1
+    monthly_fee: float = 0.0
     description: Optional[str] = None
 
 class ApartmentCreate(ApartmentBase):
@@ -22,8 +23,10 @@ class ApartmentUpdate(BaseModel):
     area: Optional[float] = None
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
+    monthly_fee: Optional[float] = None
     status: Optional[ApartmentStatus] = None
     description: Optional[str] = None
+    is_maintenance: Optional[bool] = None
 
 class ApartmentResponse(ApartmentBase):
     id: int
@@ -45,3 +48,8 @@ class ApartmentRegisterUser(BaseModel):
     email: str
     phone: Optional[str] = None
     password: Optional[str] = None  # Nếu không cung cấp, sẽ tự động sinh
+
+class ApartmentAssignUser(BaseModel):
+    """Schema để gán user có sẵn vào căn hộ"""
+    user_id: int
+    occupier_type: str  # 'owner' hoặc 'renter'

@@ -5,8 +5,9 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from app.core.database import get_session
 from app.api.dependencies import get_current_user
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, OccupierType
 from app.models.bill import Bill, Payment, BillStatus, PaymentStatus, BillType
+from app.models.apartment import Apartment
 from app.schemas.bill import BillResponse, PaymentResponse, PaymentRequest, OTPVerify, PaymentRequestResponse, BillCreate, BillUpdate
 from decimal import Decimal
 import secrets
@@ -617,3 +618,92 @@ async def resend_otp(
         session.commit()
 
     return await request_payment(request_data, session, current_user)
+
+@router.post("/generate-monthly-fees", response_model=List[BillResponse])
+async def generate_monthly_fees(
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Generate monthly apartment fees for all renters (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can generate monthly fees"
+        )
+    
+    # Use current month and year if not provided
+    now = datetime.utcnow()
+    target_month = month or now.month
+    target_year = year or now.year
+    
+    # Calculate due date (end of the month)
+    if target_month == 12:
+        next_month = 1
+        next_year = target_year + 1
+    else:
+        next_month = target_month + 1
+        next_year = target_year
+    
+    due_date = datetime(next_year, next_month, 1) - timedelta(days=1)
+    due_date = due_date.replace(hour=23, minute=59, second=59)
+    
+    # Get all apartments with residents
+    statement = select(Apartment).where(Apartment.resident_id.isnot(None))
+    apartments = session.exec(statement).all()
+    
+    created_bills = []
+    
+    for apartment in apartments:
+        # Get resident information
+        resident = session.get(User, apartment.resident_id)
+        if not resident:
+            continue
+        
+        # Only create bills for renters
+        if resident.occupier != OccupierType.RENTER:
+            continue
+        
+        # Check if fee is set for this apartment
+        if apartment.monthly_fee <= 0:
+            continue
+        
+        # Check if bill already exists for this month
+        existing_bill = session.exec(
+            select(Bill).where(
+                Bill.user_id == resident.id,
+                Bill.bill_type == BillType.MANAGEMENT_FEE,
+                func.extract('month', Bill.due_date) == target_month,
+                func.extract('year', Bill.due_date) == target_year
+            )
+        ).first()
+        
+        if existing_bill:
+            continue  # Skip if already created
+        
+        # Generate bill number
+        bill_number = generate_bill_number()
+        
+        # Create bill
+        bill = Bill(
+            bill_number=bill_number,
+            user_id=resident.id,
+            bill_type=BillType.MANAGEMENT_FEE,
+            title=f"Phí quản lý tháng {target_month}/{target_year} - Căn hộ {apartment.apartment_number}",
+            description=f"Phí quản lý hàng tháng cho căn hộ {apartment.apartment_number}, tòa {apartment.building}. Loại cư dân: {resident.occupier.value}",
+            amount=Decimal(str(apartment.monthly_fee)),
+            due_date=due_date,
+            status=BillStatus.PENDING
+        )
+        
+        session.add(bill)
+        created_bills.append(bill)
+    
+    session.commit()
+    
+    # Refresh all created bills
+    for bill in created_bills:
+        session.refresh(bill)
+    
+    return created_bills

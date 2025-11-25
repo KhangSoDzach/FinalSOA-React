@@ -32,14 +32,14 @@ import {
   CardBody,
   FormControl,
   FormLabel,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
   Tooltip,
   Stat,
   StatLabel,
-  StatNumber
+  StatNumber,
+  RadioGroup,
+  Radio,
+  Stack,
+  Checkbox
 } from '@chakra-ui/react';
 import {
   FiPlus,
@@ -47,8 +47,7 @@ import {
   FiTrash2,
   FiUserPlus,
   FiUserMinus,
-  FiRefreshCw,
-  FiCopy
+  FiRefreshCw
 } from 'react-icons/fi';
 import api from '../../services/api';
 
@@ -60,6 +59,7 @@ interface Apartment {
   area: number;
   bedrooms: number;
   bathrooms: number;
+  monthly_fee: number;
   status: 'available' | 'occupied' | 'maintenance';
   description?: string;
   resident_id?: number;
@@ -69,6 +69,7 @@ interface Apartment {
     full_name: string;
     email: string;
     phone?: string;
+    occupier?: string;
   };
   created_at: string;
   updated_at?: string;
@@ -94,6 +95,16 @@ const statusLabels = {
   maintenance: 'Bảo trì'
 };
 
+interface User {
+  id: number;
+  username: string;
+  full_name: string;
+  email: string;
+  apartment_number?: string;
+  building?: string;
+  occupier?: string;
+}
+
 const ApartmentsManagement: React.FC = () => {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [stats, setStats] = useState<ApartmentStats | null>(null);
@@ -101,7 +112,11 @@ const ApartmentsManagement: React.FC = () => {
   const [filterBuilding, setFilterBuilding] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [buildings, setBuildings] = useState<string[]>([]);
-  const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [assignData, setAssignData] = useState({
+    user_id: 0,
+    occupier_type: 'owner'
+  });
 
   const {
     isOpen: isFormOpen,
@@ -110,15 +125,9 @@ const ApartmentsManagement: React.FC = () => {
   } = useDisclosure();
   
   const {
-    isOpen: isRegisterOpen,
-    onOpen: onRegisterOpen,
-    onClose: onRegisterClose
-  } = useDisclosure();
-  
-  const {
-    isOpen: isCredentialsOpen,
-    onOpen: onCredentialsOpen,
-    onClose: onCredentialsClose
+    isOpen: isAssignOpen,
+    onOpen: onAssignOpen,
+    onClose: onAssignClose
   } = useDisclosure();
 
   const toast = useToast();
@@ -130,20 +139,16 @@ const ApartmentsManagement: React.FC = () => {
     area: 0,
     bedrooms: 1,
     bathrooms: 1,
-    description: ''
-  });
-
-  const [registerData, setRegisterData] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    password: ''
+    monthly_fee: 0,
+    description: '',
+    is_maintenance: false
   });
 
   useEffect(() => {
     fetchApartments();
     fetchStats();
     fetchBuildings();
+    fetchUsers();
   }, [filterBuilding, filterStatus]);
 
   const fetchApartments = async () => {
@@ -178,6 +183,15 @@ const ApartmentsManagement: React.FC = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   const showToast = (title: string, status: 'success' | 'error' | 'info' = 'success') => {
     toast({
       title,
@@ -198,7 +212,9 @@ const ApartmentsManagement: React.FC = () => {
         area: apartment.area,
         bedrooms: apartment.bedrooms,
         bathrooms: apartment.bathrooms,
-        description: apartment.description || ''
+        monthly_fee: apartment.monthly_fee || 0,
+        description: apartment.description || '',
+        is_maintenance: apartment.status === 'maintenance'
       });
     } else {
       setSelectedApartment(null);
@@ -209,21 +225,21 @@ const ApartmentsManagement: React.FC = () => {
         area: 0,
         bedrooms: 1,
         bathrooms: 1,
-        description: ''
+        monthly_fee: 0,
+        description: '',
+        is_maintenance: false
       });
     }
     onFormOpen();
   };
 
-  const handleOpenRegister = (apartment: Apartment) => {
+  const handleOpenAssign = (apartment: Apartment) => {
     setSelectedApartment(apartment);
-    setRegisterData({
-      full_name: '',
-      email: '',
-      phone: '',
-      password: ''
+    setAssignData({
+      user_id: 0,
+      occupier_type: 'owner'
     });
-    onRegisterOpen();
+    onAssignOpen();
   };
 
   const handleSubmit = async () => {
@@ -245,27 +261,29 @@ const ApartmentsManagement: React.FC = () => {
     }
   };
 
-  const handleRegisterResident = async () => {
-    if (!selectedApartment) return;
+  const handleAssignUser = async () => {
+    if (!selectedApartment || !assignData.user_id) {
+      showToast('Vui lòng chọn người dùng', 'error');
+      return;
+    }
 
     try {
-      const response = await api.post(
-        `/apartments/${selectedApartment.id}/register-resident`,
+      await api.post(
+        `/apartments/${selectedApartment.id}/assign-user`,
         {
-          apartment_id: selectedApartment.id,
-          ...registerData
+          user_id: assignData.user_id,
+          occupier_type: assignData.occupier_type
         }
       );
       
-      setCredentials(response.data.credentials);
-      onCredentialsOpen();
-      onRegisterClose();
+      onAssignClose();
       fetchApartments();
       fetchStats();
-      showToast('Đăng ký cư dân thành công');
+      fetchUsers();
+      showToast('Gán người dùng thành công');
     } catch (error: any) {
-      console.error('Error registering resident:', error);
-      showToast(error.response?.data?.detail || 'Lỗi khi đăng ký cư dân', 'error');
+      console.error('Error assigning user:', error);
+      showToast(error.response?.data?.detail || 'Lỗi khi gán người dùng', 'error');
     }
   };
 
@@ -299,11 +317,6 @@ const ApartmentsManagement: React.FC = () => {
       console.error('Error deleting apartment:', error);
       showToast(error.response?.data?.detail || 'Lỗi khi xóa căn hộ', 'error');
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showToast('Đã sao chép');
   };
 
   return (
@@ -416,8 +429,10 @@ const ApartmentsManagement: React.FC = () => {
               <Th>Tầng</Th>
               <Th>Diện tích</Th>
               <Th>Phòng ngủ/WC</Th>
+              <Th>Phí/tháng</Th>
               <Th>Trạng thái</Th>
               <Th>Cư dân</Th>
+              <Th>Loại</Th>
               <Th textAlign="right">Thao tác</Th>
             </Tr>
           </Thead>
@@ -431,6 +446,15 @@ const ApartmentsManagement: React.FC = () => {
                 <Td>{apartment.floor}</Td>
                 <Td>{apartment.area}m²</Td>
                 <Td>{apartment.bedrooms}/{apartment.bathrooms}</Td>
+                <Td>
+                  {apartment.monthly_fee > 0 ? (
+                    <Text fontWeight="medium" color="teal.600">
+                      {apartment.monthly_fee.toLocaleString()} VND
+                    </Text>
+                  ) : (
+                    <Text color="gray.400" fontSize="sm">N/A</Text>
+                  )}
+                </Td>
                 <Td>
                   <Badge colorScheme={statusColors[apartment.status]}>
                     {statusLabels[apartment.status]}
@@ -448,6 +472,15 @@ const ApartmentsManagement: React.FC = () => {
                     <Text fontSize="sm" color="gray.500">Chưa có</Text>
                   )}
                 </Td>
+                <Td>
+                  {apartment.resident?.occupier ? (
+                    <Badge colorScheme={apartment.resident.occupier === 'owner' ? 'purple' : 'orange'}>
+                      {apartment.resident.occupier === 'owner' ? 'Chủ hộ' : 'Người thuê'}
+                    </Badge>
+                  ) : (
+                    <Text fontSize="sm" color="gray.400">N/A</Text>
+                  )}
+                </Td>
                 <Td textAlign="right">
                   <HStack spacing={1} justify="flex-end">
                     <Tooltip label="Sửa">
@@ -461,12 +494,12 @@ const ApartmentsManagement: React.FC = () => {
                       />
                     </Tooltip>
                     {apartment.status === 'available' && (
-                      <Tooltip label="Đăng ký cư dân">
+                      <Tooltip label="Gán cư dân">
                         <IconButton
-                          aria-label="Register"
+                          aria-label="Assign User"
                           icon={<FiUserPlus />}
                           size="sm"
-                          onClick={() => handleOpenRegister(apartment)}
+                          onClick={() => handleOpenAssign(apartment)}
                           colorScheme="green"
                           variant="ghost"
                         />
@@ -559,12 +592,33 @@ const ApartmentsManagement: React.FC = () => {
                 />
               </FormControl>
               <FormControl>
+                <FormLabel>Phí quản lý hàng tháng (VND)</FormLabel>
+                <Input
+                  type="number"
+                  value={formData.monthly_fee}
+                  onChange={(e) => setFormData({ ...formData, monthly_fee: parseFloat(e.target.value) })}
+                  placeholder="Chỉ áp dụng cho người thuê (renter)"
+                />
+              </FormControl>
+              <FormControl>
                 <FormLabel>Mô tả</FormLabel>
                 <Textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                 />
+              </FormControl>
+              <FormControl>
+                <Checkbox
+                  isChecked={formData.is_maintenance}
+                  onChange={(e) => setFormData({ ...formData, is_maintenance: e.target.checked })}
+                  colorScheme="orange"
+                >
+                  Đang bảo trì
+                </Checkbox>
+                <Text fontSize="xs" color="gray.500" mt={1}>
+                  Khi chọn, căn hộ sẽ chuyển sang trạng thái bảo trì
+                </Text>
               </FormControl>
             </VStack>
           </ModalBody>
@@ -579,131 +633,61 @@ const ApartmentsManagement: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      {/* Modal đăng ký cư dân */}
-      <Modal isOpen={isRegisterOpen} onClose={onRegisterClose} size="lg">
+      {/* Modal gán cư dân */}
+      <Modal isOpen={isAssignOpen} onClose={onAssignClose} size="lg">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            Đăng ký cư dân cho căn hộ {selectedApartment?.apartment_number}
+            Gán cư dân cho căn hộ {selectedApartment?.apartment_number}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Alert status="info" mb={4} borderRadius="md">
-              <AlertIcon />
-              <Box>
-                <AlertTitle>Thông tin đăng nhập</AlertTitle>
-                <AlertDescription>
-                  Tài khoản sẽ được tạo với username là số căn hộ: <strong>{selectedApartment?.apartment_number}</strong>
-                  <br />
-                  Để trống mật khẩu để hệ thống tự động tạo.
-                </AlertDescription>
-              </Box>
-            </Alert>
             <VStack spacing={4}>
               <FormControl isRequired>
-                <FormLabel>Họ tên</FormLabel>
-                <Input
-                  value={registerData.full_name}
-                  onChange={(e) => setRegisterData({ ...registerData, full_name: e.target.value })}
-                />
+                <FormLabel>Chọn người dùng</FormLabel>
+                <Select
+                  value={assignData.user_id}
+                  onChange={(e) => setAssignData({ ...assignData, user_id: parseInt(e.target.value) })}
+                  placeholder="-- Chọn người dùng --"
+                >
+                  {users
+                    .filter(user => !user.apartment_number) // Chỉ hiển thị users chưa có căn hộ
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name} - {user.email}
+                      </option>
+                    ))}
+                </Select>
               </FormControl>
               <FormControl isRequired>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={registerData.email}
-                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Số điện thoại</FormLabel>
-                <Input
-                  value={registerData.phone}
-                  onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Mật khẩu (tùy chọn)</FormLabel>
-                <Input
-                  type="password"
-                  value={registerData.password}
-                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                  placeholder="Để trống để tự động tạo mật khẩu"
-                />
+                <FormLabel>Loại cư dân</FormLabel>
+                <RadioGroup
+                  value={assignData.occupier_type}
+                  onChange={(value) => setAssignData({ ...assignData, occupier_type: value })}
+                >
+                  <Stack direction="row" spacing={5}>
+                    <Radio value="owner" colorScheme="purple">
+                      Chủ hộ (Owner)
+                    </Radio>
+                    <Radio value="renter" colorScheme="orange">
+                      Người thuê (Renter)
+                    </Radio>
+                  </Stack>
+                </RadioGroup>
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  * Chủ hộ không cần đóng phí quản lý hàng tháng
+                  <br />
+                  * Người thuê sẽ phải đóng phí quản lý: {selectedApartment?.monthly_fee.toLocaleString() || 0} VND/tháng
+                </Text>
               </FormControl>
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onRegisterClose}>
+            <Button variant="ghost" mr={3} onClick={onAssignClose}>
               Hủy
             </Button>
-            <Button colorScheme="purple" onClick={handleRegisterResident}>
-              Đăng ký
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Modal hiển thị thông tin đăng nhập */}
-      <Modal
-        isOpen={isCredentialsOpen}
-        onClose={() => {
-          onCredentialsClose();
-          setCredentials(null);
-        }}
-        size="lg"
-      >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Thông tin đăng nhập</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Alert status="success" mb={4} borderRadius="md">
-              <AlertIcon />
-              Tài khoản đã được tạo thành công!
-            </Alert>
-            {credentials && (
-              <VStack spacing={4} align="stretch">
-                <Box p={4} bg="gray.50" borderRadius="md">
-                  <Text fontSize="sm" color="gray.600" mb={1}>Tên đăng nhập:</Text>
-                  <Flex align="center" justify="space-between">
-                    <Text fontSize="xl" fontWeight="bold">{credentials.username}</Text>
-                    <IconButton
-                      aria-label="Copy username"
-                      icon={<FiCopy />}
-                      size="sm"
-                      onClick={() => copyToClipboard(credentials.username)}
-                    />
-                  </Flex>
-                </Box>
-                <Box p={4} bg="gray.50" borderRadius="md">
-                  <Text fontSize="sm" color="gray.600" mb={1}>Mật khẩu:</Text>
-                  <Flex align="center" justify="space-between">
-                    <Text fontSize="xl" fontWeight="bold">{credentials.password}</Text>
-                    <IconButton
-                      aria-label="Copy password"
-                      icon={<FiCopy />}
-                      size="sm"
-                      onClick={() => copyToClipboard(credentials.password)}
-                    />
-                  </Flex>
-                </Box>
-                <Alert status="warning" borderRadius="md">
-                  <AlertIcon />
-                  Hãy lưu lại thông tin này và gửi cho cư dân. Bạn sẽ không thể xem lại mật khẩu sau này.
-                </Alert>
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              colorScheme="purple"
-              onClick={() => {
-                onCredentialsClose();
-                setCredentials(null);
-              }}
-            >
-              Đóng
+            <Button colorScheme="purple" onClick={handleAssignUser}>
+              Gán cư dân
             </Button>
           </ModalFooter>
         </ModalContent>

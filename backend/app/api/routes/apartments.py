@@ -12,7 +12,8 @@ from app.schemas.apartment import (
     ApartmentCreate,
     ApartmentUpdate,
     ApartmentWithResident,
-    ApartmentRegisterUser
+    ApartmentRegisterUser,
+    ApartmentAssignUser
 )
 from app.core.security import get_password_hash
 
@@ -56,7 +57,8 @@ async def get_apartments(
                     "username": resident.username,
                     "full_name": resident.full_name,
                     "email": resident.email,
-                    "phone": resident.phone
+                    "phone": resident.phone,
+                    "occupier": resident.occupier
                 }
         result.append(apt_dict)
     
@@ -131,6 +133,18 @@ async def update_apartment(
         )
     
     update_data = apartment_update.model_dump(exclude_unset=True)
+    
+    # Xử lý is_maintenance để chuyển thành status
+    if 'is_maintenance' in update_data:
+        is_maintenance = update_data.pop('is_maintenance')
+        if is_maintenance:
+            update_data['status'] = ApartmentStatus.MAINTENANCE
+        else:
+            # Nếu không phải bảo trì, kiểm tra có cư dân không
+            if apartment.resident_id:
+                update_data['status'] = ApartmentStatus.OCCUPIED
+            else:
+                update_data['status'] = ApartmentStatus.AVAILABLE
     
     for field, value in update_data.items():
         setattr(apartment, field, value)
@@ -265,6 +279,93 @@ async def register_resident(
         }
     }
 
+@router.post("/{apartment_id}/assign-user")
+async def assign_user_to_apartment(
+    apartment_id: int,
+    *,
+    user_id: int,
+    occupier_type: str,
+    current_user: User = Depends(get_current_admin_user),
+    session: Session = Depends(get_session)
+):
+    """Gán user có sẵn vào căn hộ với phân loại owner/renter (admin only)
+    
+    Body: {
+        "user_id": int,
+        "occupier_type": "owner" | "renter"
+    }
+    """
+    # Kiểm tra căn hộ
+    apartment = session.get(Apartment, apartment_id)
+    if not apartment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Apartment not found"
+        )
+    
+    if apartment.status == ApartmentStatus.OCCUPIED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apartment is already occupied"
+        )
+    
+    # Kiểm tra user
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Kiểm tra user đã có căn hộ chưa
+    if user.apartment_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User already assigned to apartment {user.apartment_number}"
+        )
+    
+    # Kiểm tra occupier_type hợp lệ
+    from app.models.user import OccupierType
+    if occupier_type not in [OccupierType.OWNER, OccupierType.RENTER]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid occupier type. Must be 'owner' or 'renter'"
+        )
+    
+    # Cập nhật user
+    user.apartment_number = apartment.apartment_number
+    user.building = apartment.building
+    user.occupier = occupier_type
+    
+    session.add(user)
+    
+    # Cập nhật căn hộ
+    apartment.resident_id = user.id
+    apartment.status = ApartmentStatus.OCCUPIED
+    from datetime import datetime
+    apartment.updated_at = datetime.utcnow()
+    
+    session.add(apartment)
+    session.commit()
+    session.refresh(apartment)
+    session.refresh(user)
+    
+    return {
+        "message": "User assigned successfully",
+        "apartment": {
+            "id": apartment.id,
+            "apartment_number": apartment.apartment_number,
+            "building": apartment.building,
+            "status": apartment.status
+        },
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "full_name": user.full_name,
+            "occupier": user.occupier
+        }
+    }
+
 @router.delete("/{apartment_id}/remove-resident")
 async def remove_resident(
     apartment_id: int,
@@ -302,11 +403,12 @@ async def remove_resident(
         if resident:
             session.delete(resident)
     else:
-        # Chỉ cập nhật thông tin user
+        # Chỉ cập nhật thông tin user (reset apartment info và occupier)
         resident = session.get(User, resident_id)
         if resident:
             resident.apartment_number = None
             resident.building = None
+            resident.occupier = None
             session.add(resident)
     
     session.commit()

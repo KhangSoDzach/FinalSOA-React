@@ -425,6 +425,38 @@ const AdminBills = () => {
     }
   }
 
+  const handleGenerateMonthlyFees = async () => {
+    try {
+      const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear()
+      
+      const result = await billsAPI.generateMonthlyFees(month, year)
+      
+      toast({
+        title: 'Generated monthly fees',
+        description: `Created ${result.length} bills for renters`,
+        status: 'success',
+        duration: 3000,
+      })
+      fetchBills()
+      fetchStatistics()
+    } catch (error: any) {
+      console.error('Error generating monthly fees:', error)
+      const errorMsg = error.response?.data?.detail 
+        ? (typeof error.response.data.detail === 'string' 
+            ? error.response.data.detail 
+            : JSON.stringify(error.response.data.detail))
+        : 'Something went wrong'
+      toast({
+        title: 'Error generating monthly fees',
+        description: errorMsg,
+        status: 'error',
+        duration: 3000,
+      })
+    }
+  }
+
   const openEditModal = (bill: Bill) => {
     setSelectedBill(bill)
     setFormData({
@@ -588,6 +620,14 @@ const AdminBills = () => {
             onClick={handleMarkOverdue}
           >
             Mark Overdue
+          </Button>
+          <Button
+            leftIcon={<FiDollarSign />}
+            colorScheme="teal"
+            size="sm"
+            onClick={handleGenerateMonthlyFees}
+          >
+            Generate Monthly Fees
           </Button>
           <Button
             leftIcon={<FiBell />}

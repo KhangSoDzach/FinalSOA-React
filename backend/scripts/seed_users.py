@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlmodel import Session, select
 from app.core.database import engine
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, OccupierType
 from app.core.security import get_password_hash
 
 def create_sample_users():
@@ -58,7 +58,8 @@ def create_sample_users():
             "full_name": "Nguyễn Văn A",
             "phone": "0904567890",
             "role": UserRole.USER,
-            "apartment_number": "101",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "A101",
             "building": "A",
             "is_active": True
         },
@@ -68,7 +69,8 @@ def create_sample_users():
             "full_name": "Trần Thị B",
             "phone": "0905678901",
             "role": UserRole.USER,
-            "apartment_number": "102",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "A102",
             "building": "A",
             "is_active": True
         },
@@ -78,7 +80,8 @@ def create_sample_users():
             "full_name": "Lê Văn C",
             "phone": "0906789012",
             "role": UserRole.USER,
-            "apartment_number": "201",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "A201",
             "building": "A",
             "is_active": True
         },
@@ -88,7 +91,8 @@ def create_sample_users():
             "full_name": "Phạm Thị D",
             "phone": "0907890123",
             "role": UserRole.USER,
-            "apartment_number": "202",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "A202",
             "building": "A",
             "is_active": False  # Inactive user
         },
@@ -98,7 +102,8 @@ def create_sample_users():
             "full_name": "Hoàng Văn E",
             "phone": "0908901234",
             "role": UserRole.USER,
-            "apartment_number": "301",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "A301",
             "building": "A",
             "is_active": True
         },
@@ -110,7 +115,8 @@ def create_sample_users():
             "full_name": "Võ Thị F",
             "phone": "0909012345",
             "role": UserRole.USER,
-            "apartment_number": "101",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "B101",
             "building": "B",
             "is_active": True
         },
@@ -120,7 +126,8 @@ def create_sample_users():
             "full_name": "Đặng Văn G",
             "phone": "0910123456",
             "role": UserRole.USER,
-            "apartment_number": "102",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "B102",
             "building": "B",
             "is_active": True
         },
@@ -130,7 +137,8 @@ def create_sample_users():
             "full_name": "Bùi Thị H",
             "phone": "0911234567",
             "role": UserRole.USER,
-            "apartment_number": "201",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "B201",
             "building": "B",
             "is_active": True
         },
@@ -140,7 +148,8 @@ def create_sample_users():
             "full_name": "Đỗ Văn I",
             "phone": "0912345678",
             "role": UserRole.USER,
-            "apartment_number": "202",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "B202",
             "building": "B",
             "is_active": True
         },
@@ -150,7 +159,8 @@ def create_sample_users():
             "full_name": "Ngô Thị K",
             "phone": "0913456789",
             "role": UserRole.USER,
-            "apartment_number": "301",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "B301",
             "building": "B",
             "is_active": False  # Inactive user
         },
@@ -162,17 +172,8 @@ def create_sample_users():
             "full_name": "Dương Văn L",
             "phone": "0914567890",
             "role": UserRole.USER,
-            "apartment_number": "101",
-            "building": "C",
-            "is_active": True
-        },
-        {
-            "username": "user_c102",
-            "email": "ly.thim@gmail.com",
-            "full_name": "Lý Thị M",
-            "phone": "0915678901",
-            "role": UserRole.USER,
-            "apartment_number": "102",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "C101",
             "building": "C",
             "is_active": True
         },
@@ -182,7 +183,8 @@ def create_sample_users():
             "full_name": "Trương Văn N",
             "phone": "0916789012",
             "role": UserRole.USER,
-            "apartment_number": "201",
+            "occupier": OccupierType.OWNER,
+            "apartment_number": "C201",
             "building": "C",
             "is_active": True
         },
@@ -192,7 +194,8 @@ def create_sample_users():
             "full_name": "Mai Thị O",
             "phone": "0917890123",
             "role": UserRole.USER,
-            "apartment_number": "202",
+            "occupier": OccupierType.RENTER,
+            "apartment_number": "C202",
             "building": "C",
             "is_active": True
         },

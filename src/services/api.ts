@@ -232,6 +232,14 @@ export const billsAPI = {
   getPayments: async (billId: number) => {
     const response = await api.get(`/bills/${billId}/payments`)
     return response.data
+  },
+  
+  generateMonthlyFees: async (month?: number, year?: number) => {
+    const params: any = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.post('/bills/generate-monthly-fees', null, { params })
+    return response.data
   }
 }
 

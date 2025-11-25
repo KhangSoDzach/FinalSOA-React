@@ -38,6 +38,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     occupier: OccupierType
+    balance: float = 0.0
 
     class Config:
         from_attributes = True
