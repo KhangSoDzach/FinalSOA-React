@@ -29,7 +29,7 @@ class User(SQLModel, table=True):
     phone: Optional[str] = None
     role: UserRole = Field(default=UserRole.USER)
     
-    occupier: OccupierType = Field(default=OccupierType.OWNER)
+    occupier: Optional[OccupierType] = Field(default=OccupierType.OWNER)
     
     apartment_number: Optional[str] = None
     building: Optional[str] = None

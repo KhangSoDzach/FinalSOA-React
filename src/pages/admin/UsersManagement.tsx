@@ -69,8 +69,6 @@ interface NewUser {
   full_name: string;
   phone: string;
   role: string;
-  apartment_number: string;
-  building: string;
 }
 
 const UsersManagement: React.FC = () => {
@@ -85,8 +83,6 @@ const UsersManagement: React.FC = () => {
     full_name: '',
     phone: '',
     role: 'user',
-    apartment_number: '',
-    building: '',
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,8 +193,6 @@ const UsersManagement: React.FC = () => {
 
       // Add optional fields if provided
       if (newUser.phone) userData.phone = newUser.phone;
-      if (newUser.apartment_number) userData.apartment_number = newUser.apartment_number;
-      if (newUser.building) userData.building = newUser.building;
 
       await usersAPI.create(userData);
 
@@ -218,8 +212,6 @@ const UsersManagement: React.FC = () => {
         full_name: '',
         phone: '',
         role: 'user',
-        apartment_number: '',
-        building: '',
       });
 
       fetchUsers();
@@ -846,30 +838,6 @@ const UsersManagement: React.FC = () => {
                 />
               </FormControl>
 
-              <HStack spacing={4} w="full">
-                <FormControl flex={1}>
-                  <FormLabel>Tòa nhà</FormLabel>
-                  <Input
-                    value={newUser.building}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, building: e.target.value })
-                    }
-                    placeholder="VD: A, B, C..."
-                  />
-                </FormControl>
-
-                <FormControl flex={1}>
-                  <FormLabel>Căn hộ</FormLabel>
-                  <Input
-                    value={newUser.apartment_number}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, apartment_number: e.target.value })
-                    }
-                    placeholder="VD: 101, 102..."
-                  />
-                </FormControl>
-              </HStack>
-
               <FormControl isRequired>
                 <FormLabel>Vai trò</FormLabel>
                 <Select
@@ -896,6 +864,9 @@ const UsersManagement: React.FC = () => {
                   </Text>
                   <Text fontSize="sm">
                     - Người dùng mới sẽ được kích hoạt ngay lập tức
+                  </Text>
+                  <Text fontSize="sm">
+                    - Tòa nhà và căn hộ sẽ được gán tự động khi thêm vào quản lý căn hộ
                   </Text>
                 </Box>
               </Alert>

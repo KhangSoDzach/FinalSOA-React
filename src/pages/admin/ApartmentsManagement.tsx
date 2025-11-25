@@ -281,6 +281,11 @@ const ApartmentsManagement: React.FC = () => {
       fetchStats();
       fetchUsers();
       showToast('Gán người dùng thành công');
+      // Reset assignData
+      setAssignData({
+        user_id: 0,
+        occupier_type: 'owner'
+      });
     } catch (error: any) {
       console.error('Error assigning user:', error);
       showToast(error.response?.data?.detail || 'Lỗi khi gán người dùng', 'error');
@@ -297,6 +302,7 @@ const ApartmentsManagement: React.FC = () => {
       showToast('Xóa cư dân thành công');
       fetchApartments();
       fetchStats();
+      fetchUsers(); // Refresh danh sách users để cập nhật users chưa có căn hộ
     } catch (error: any) {
       console.error('Error removing resident:', error);
       showToast(error.response?.data?.detail || 'Lỗi khi xóa cư dân', 'error');

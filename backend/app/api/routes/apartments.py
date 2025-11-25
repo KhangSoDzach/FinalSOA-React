@@ -282,9 +282,7 @@ async def register_resident(
 @router.post("/{apartment_id}/assign-user")
 async def assign_user_to_apartment(
     apartment_id: int,
-    *,
-    user_id: int,
-    occupier_type: str,
+    assign_data: ApartmentAssignUser,
     current_user: User = Depends(get_current_admin_user),
     session: Session = Depends(get_session)
 ):
@@ -310,7 +308,7 @@ async def assign_user_to_apartment(
         )
     
     # Kiểm tra user
-    user = session.get(User, user_id)
+    user = session.get(User, assign_data.user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -326,7 +324,7 @@ async def assign_user_to_apartment(
     
     # Kiểm tra occupier_type hợp lệ
     from app.models.user import OccupierType
-    if occupier_type not in [OccupierType.OWNER, OccupierType.RENTER]:
+    if assign_data.occupier_type not in [OccupierType.OWNER, OccupierType.RENTER]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid occupier type. Must be 'owner' or 'renter'"
@@ -335,7 +333,7 @@ async def assign_user_to_apartment(
     # Cập nhật user
     user.apartment_number = apartment.apartment_number
     user.building = apartment.building
-    user.occupier = occupier_type
+    user.occupier = assign_data.occupier_type
     
     session.add(user)
     
@@ -403,12 +401,12 @@ async def remove_resident(
         if resident:
             session.delete(resident)
     else:
-        # Chỉ cập nhật thông tin user (reset apartment info và occupier)
+        # Chỉ cập nhật thông tin user (reset apartment info)
         resident = session.get(User, resident_id)
         if resident:
             resident.apartment_number = None
             resident.building = None
-            resident.occupier = None
+            # Giữ nguyên occupier vì có thể cần cho lần gán tiếp theo
             session.add(resident)
     
     session.commit()
