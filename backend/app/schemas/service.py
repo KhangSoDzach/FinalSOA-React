@@ -79,8 +79,7 @@ class ServiceBookingResponse(ServiceBookingBase):
     confirmed_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     completion_notes: Optional[str] = None
-    rating: Optional[int] = None
-    feedback: Optional[str] = None
+    # Đã xóa rating và feedback
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -90,7 +89,3 @@ class ServiceBookingResponse(ServiceBookingBase):
 class BookingConfirm(BaseModel):
     status: BookingStatus
     completion_notes: Optional[str] = None
-
-class BookingFeedback(BaseModel):
-    rating: int  # 1-5
-    feedback: Optional[str] = None

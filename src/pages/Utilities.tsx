@@ -27,103 +27,40 @@ import {
   TabPanels,
   Tab,
   TabPanel,
+  useToast,
+  Spinner,
+  Center
 } from '@chakra-ui/react'
 import { 
   FiCalendar, 
   FiClock,
-  FiStar
+  FiXCircle
 } from 'react-icons/fi'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { servicesAPI } from '../services/api'
 
+// Interface khớp với Backend Response
 interface Service {
-  id: string
+  id: number
   name: string
   description: string
   category: string
   price: number
-  duration: string
-  provider: string
-  available: boolean
+  unit: string
+  provider_name: string
+  status: string
 }
 
 interface Booking {
-  id: string
-  serviceId: string
-  serviceName: string
-  date: string
-  time: string
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
-  provider: string
-  price: number
-  rating?: number
+  id: number
+  booking_number: string
+  service_id: number
+  service?: Service
+  scheduled_date: string
+  scheduled_time_start: string
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
+  total_amount: number
 }
-
-const mockServices: Service[] = [
-  {
-    id: 'SV-001',
-    name: 'Apartment Cleaning',
-    description: 'Deep cleaning service for your apartment including kitchen, bathroom, and living areas',
-    category: 'Cleaning',
-    price: 500000,
-    duration: '2-3 hours',
-    provider: 'CleanPro Services',
-    available: true
-  },
-  {
-    id: 'SV-002',
-    name: 'AC Maintenance',
-    description: 'Air conditioning maintenance and cleaning service',
-    category: 'Maintenance',
-    price: 300000,
-    duration: '1-2 hours',
-    provider: 'CoolAir Tech',
-    available: true
-  },
-  {
-    id: 'SV-003',
-    name: 'Plumbing Repair',
-    description: 'Professional plumbing repair and installation services',
-    category: 'Repair',
-    price: 400000,
-    duration: '1-3 hours',
-    provider: 'AquaFix Pro',
-    available: true
-  },
-  {
-    id: 'SV-004',
-    name: 'Meeting Room Booking',
-    description: 'Book the community meeting room for events or gatherings',
-    category: 'Facility',
-    price: 200000,
-    duration: 'Per hour',
-    provider: 'Building Management',
-    available: false
-  }
-]
-
-const mockBookings: Booking[] = [
-  {
-    id: 'BK-001',
-    serviceId: 'SV-001',
-    serviceName: 'Apartment Cleaning',
-    date: '2025-11-01',
-    time: '09:00',
-    status: 'confirmed',
-    provider: 'CleanPro Services',
-    price: 500000
-  },
-  {
-    id: 'BK-002',
-    serviceId: 'SV-002',
-    serviceName: 'AC Maintenance',
-    date: '2025-10-25',
-    time: '14:00',
-    status: 'completed',
-    provider: 'CoolAir Tech',
-    price: 300000,
-    rating: 5
-  }
-]
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -135,6 +72,7 @@ const formatCurrency = (amount: number) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'confirmed': return 'blue'
+    case 'in_progress': return 'purple'
     case 'completed': return 'green'
     case 'pending': return 'orange'
     case 'cancelled': return 'red'
@@ -144,50 +82,167 @@ const getStatusColor = (status: string) => {
 
 export default function Utilities() {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const toast = useToast()
+  
+  const [services, setServices] = useState<Service[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+
   const [selectedService, setSelectedService] = useState<Service | null>(null)
+  
+  // Form State
   const [bookingData, setBookingData] = useState({
     date: '',
     time: '',
-    notes: ''
+    notes: '',
+    quantity: 1
   })
 
-  const handleBookService = (service: Service) => {
+  // HÀM MỚI: Tính toán ngày mai để làm mốc min date
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  }
+
+  // 1. Fetch Data
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [servicesData, bookingsData] = await Promise.all([
+        servicesAPI.getAllServices(),
+        servicesAPI.getMyBookings()
+      ])
+      
+      const enrichedBookings = bookingsData.map((b: any) => {
+        const srv = servicesData.find((s: any) => s.id === b.service_id)
+        return { ...b, service: srv }
+      })
+
+      setServices(servicesData)
+      setBookings(enrichedBookings)
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Lỗi tải dữ liệu",
+        status: "error",
+        duration: 3000
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const handleOpenBooking = (service: Service) => {
     setSelectedService(service)
+    setBookingData({
+      date: getTomorrowDate(), // Mặc định chọn ngày mai
+      time: '09:00',
+      notes: '',
+      quantity: 1
+    })
     onOpen()
   }
 
-  const upcomingBookings = mockBookings.filter(b => 
-    b.status === 'confirmed' || b.status === 'pending'
+  // 2. Handle Booking Submit
+  const handleSubmitBooking = async () => {
+    if (!selectedService) return
+
+    try {
+      setActionLoading(true)
+      const payload = {
+        scheduled_date: new Date(bookingData.date).toISOString(),
+        scheduled_time_start: bookingData.time + ":00",
+        quantity: bookingData.quantity,
+        special_instructions: bookingData.notes
+      }
+
+      await servicesAPI.bookService(selectedService.id, payload)
+      
+      toast({
+        title: "Đặt dịch vụ thành công",
+        description: "Vui lòng chờ BQL xác nhận.",
+        status: "success",
+        duration: 5000
+      })
+      onClose()
+      fetchData() 
+
+    } catch (error: any) {
+      toast({
+        title: "Đặt thất bại",
+        description: error.response?.data?.detail || "Có lỗi xảy ra",
+        status: "error",
+        duration: 4000
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // 3. Handle Cancel Booking
+  const handleCancelBooking = async (bookingId: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn hủy đơn này?")) return
+
+    try {
+      setActionLoading(true)
+      await servicesAPI.cancelBooking(bookingId)
+      toast({
+        title: "Đã hủy đơn",
+        status: "success",
+        duration: 3000
+      })
+      fetchData()
+    } catch (error: any) {
+      toast({
+        title: "Hủy thất bại",
+        description: error.response?.data?.detail,
+        status: "error",
+        duration: 3000
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const activeBookings = bookings.filter(b => 
+    ['pending', 'confirmed', 'in_progress'].includes(b.status)
   )
-  const pastBookings = mockBookings.filter(b => 
-    b.status === 'completed' || b.status === 'cancelled'
+  const historyBookings = bookings.filter(b => 
+    ['completed', 'cancelled'].includes(b.status)
   )
+
+  if (loading) return <Center h="200px"><Spinner /></Center>
 
   return (
     <Box>
-      {/* Header */}
       <Box mb="6">
         <Text fontSize="2xl" fontWeight="semibold" mb="2">
-          Utility Services
+          Dịch vụ tiện ích
         </Text>
         <Text color="gray.600">
-          Book cleaning, maintenance, and other utility services for your apartment
+          Đặt lịch dọn dẹp, sửa chữa và các tiện ích khác cho căn hộ của bạn
         </Text>
       </Box>
 
-      <Tabs>
+      <Tabs isLazy>
         <TabList>
-          <Tab>Available Services</Tab>
-          <Tab>My Bookings ({upcomingBookings.length})</Tab>
-          <Tab>History ({pastBookings.length})</Tab>
+          <Tab>Danh sách dịch vụ</Tab>
+          <Tab>Đang đặt ({activeBookings.length})</Tab>
+          <Tab>Lịch sử ({historyBookings.length})</Tab>
         </TabList>
 
         <TabPanels>
-          {/* Available Services */}
+          {/* --- Tab 1: Available Services --- */}
           <TabPanel p="0" pt="6">
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="6">
-              {mockServices.map((service) => (
-                <Card key={service.id} opacity={service.available ? 1 : 0.6}>
+              {services.map((service) => (
+                <Card key={service.id}>
                   <CardBody>
                     <VStack spacing="4" align="stretch">
                       <Box>
@@ -195,30 +250,24 @@ export default function Utilities() {
                           <Text fontWeight="semibold" fontSize="lg">
                             {service.name}
                           </Text>
-                          <Badge colorScheme={service.available ? 'green' : 'gray'}>
-                            {service.available ? 'Available' : 'Unavailable'}
-                          </Badge>
+                          <Badge colorScheme="green">Hoạt động</Badge>
                         </HStack>
                         
-                        <Text color="gray.600" fontSize="sm" mb="3">
+                        <Text color="gray.600" fontSize="sm" mb="3" noOfLines={2}>
                           {service.description}
                         </Text>
                         
                         <VStack spacing="2" align="stretch" fontSize="sm">
                           <HStack justify="space-between">
-                            <Text color="gray.500">Category:</Text>
-                            <Text fontWeight="medium">{service.category}</Text>
+                            <Text color="gray.500">Đơn vị:</Text>
+                            <Text fontWeight="medium">{service.unit}</Text>
                           </HStack>
                           <HStack justify="space-between">
-                            <Text color="gray.500">Duration:</Text>
-                            <Text fontWeight="medium">{service.duration}</Text>
+                            <Text color="gray.500">Nhà cung cấp:</Text>
+                            <Text fontWeight="medium">{service.provider_name || 'BQL'}</Text>
                           </HStack>
                           <HStack justify="space-between">
-                            <Text color="gray.500">Provider:</Text>
-                            <Text fontWeight="medium">{service.provider}</Text>
-                          </HStack>
-                          <HStack justify="space-between">
-                            <Text color="gray.500">Price:</Text>
+                            <Text color="gray.500">Giá:</Text>
                             <Text fontWeight="bold" color="brand.500" fontSize="md">
                               {formatCurrency(service.price)}
                             </Text>
@@ -229,10 +278,9 @@ export default function Utilities() {
                       <Button
                         colorScheme="brand"
                         leftIcon={<FiCalendar />}
-                        isDisabled={!service.available}
-                        onClick={() => handleBookService(service)}
+                        onClick={() => handleOpenBooking(service)}
                       >
-                        Book Service
+                        Đặt dịch vụ
                       </Button>
                     </VStack>
                   </CardBody>
@@ -241,123 +289,87 @@ export default function Utilities() {
             </SimpleGrid>
           </TabPanel>
 
-          {/* My Bookings */}
+          {/* --- Tab 2: Active Bookings --- */}
           <TabPanel p="0" pt="6">
             <VStack spacing="4" align="stretch">
-              {upcomingBookings.map((booking) => (
-                <Card key={booking.id}>
-                  <CardBody>
-                    <Flex align="center">
-                      <Box flex="1">
-                        <HStack spacing="3" mb="2">
-                          <Text fontWeight="semibold" fontSize="lg">
-                            {booking.serviceName}
-                          </Text>
-                          <Badge colorScheme={getStatusColor(booking.status)}>
-                            {booking.status.toUpperCase()}
-                          </Badge>
-                        </HStack>
-                        
-                        <HStack spacing="4" fontSize="sm" color="gray.500" mb="2">
-                          <HStack>
-                            <Icon as={FiCalendar} />
-                            <Text>{new Date(booking.date).toLocaleDateString()}</Text>
+              {activeBookings.length === 0 ? (
+                <Text textAlign="center" color="gray.500" py={8}>Chưa có dịch vụ nào đang đặt.</Text>
+              ) : (
+                activeBookings.map((booking) => (
+                  <Card key={booking.id} borderLeft="4px solid" borderColor={getStatusColor(booking.status) + ".400"}>
+                    <CardBody>
+                      <Flex align="center" direction={{base: 'column', md: 'row'}} gap={4}>
+                        <Box flex="1">
+                          <HStack spacing="3" mb="2">
+                            <Text fontWeight="semibold" fontSize="lg">
+                              {booking.service?.name || "Dịch vụ #" + booking.service_id}
+                            </Text>
+                            <Badge colorScheme={getStatusColor(booking.status)}>
+                              {booking.status.toUpperCase()}
+                            </Badge>
                           </HStack>
-                          <HStack>
-                            <Icon as={FiClock} />
-                            <Text>{booking.time}</Text>
+                          
+                          <HStack spacing="6" fontSize="sm" color="gray.600" wrap="wrap">
+                            <HStack>
+                              <Icon as={FiCalendar} />
+                              <Text>{new Date(booking.scheduled_date).toLocaleDateString('vi-VN')}</Text>
+                            </HStack>
+                            <HStack>
+                              <Icon as={FiClock} />
+                              <Text>{booking.scheduled_time_start.substring(0, 5)}</Text>
+                            </HStack>
+                            <Text fontWeight="medium" color="brand.500">
+                              {formatCurrency(booking.total_amount)}
+                            </Text>
                           </HStack>
-                          <Text>Provider: {booking.provider}</Text>
-                        </HStack>
+                          {booking.booking_number && (
+                            <Text fontSize="xs" color="gray.400" mt={1}>#{booking.booking_number}</Text>
+                          )}
+                        </Box>
                         
-                        <Text fontWeight="medium" color="brand.500">
-                          {formatCurrency(booking.price)}
-                        </Text>
-                      </Box>
-                      
-                      <VStack spacing="2">
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                        {booking.status === 'confirmed' && (
-                          <Button size="sm" colorScheme="red" variant="outline">
-                            Cancel
-                          </Button>
-                        )}
-                      </VStack>
-                    </Flex>
-                  </CardBody>
-                </Card>
-              ))}
-              
-              {upcomingBookings.length === 0 && (
-                <Card>
-                  <CardBody textAlign="center" py="12">
-                    <Icon as={FiCalendar} boxSize="12" color="gray.400" mb="4" />
-                    <Text fontSize="lg" fontWeight="semibold" mb="2">
-                      No upcoming bookings
-                    </Text>
-                    <Text color="gray.600">
-                      Book a service to see it here
-                    </Text>
-                  </CardBody>
-                </Card>
+                        <HStack>
+                          {booking.status === 'pending' && (
+                            <Button 
+                              size="sm" 
+                              colorScheme="red" 
+                              variant="outline" 
+                              leftIcon={<FiXCircle />}
+                              isLoading={actionLoading}
+                              onClick={() => handleCancelBooking(booking.id)}
+                            >
+                              Hủy yêu cầu
+                            </Button>
+                          )}
+                        </HStack>
+                      </Flex>
+                    </CardBody>
+                  </Card>
+                ))
               )}
             </VStack>
           </TabPanel>
 
-          {/* History */}
+          {/* --- Tab 3: History --- */}
           <TabPanel p="0" pt="6">
             <VStack spacing="4" align="stretch">
-              {pastBookings.map((booking) => (
-                <Card key={booking.id}>
+               {historyBookings.map((booking) => (
+                <Card key={booking.id} opacity={0.8}>
                   <CardBody>
                     <Flex align="center">
                       <Box flex="1">
                         <HStack spacing="3" mb="2">
                           <Text fontWeight="semibold" fontSize="lg">
-                            {booking.serviceName}
+                            {booking.service?.name || "Dịch vụ cũ"}
                           </Text>
                           <Badge colorScheme={getStatusColor(booking.status)}>
                             {booking.status.toUpperCase()}
                           </Badge>
-                          {booking.rating && (
-                            <HStack spacing="1">
-                              {[...Array(5)].map((_, i) => (
-                                <Icon
-                                  key={i}
-                                  as={FiStar}
-                                  color={i < booking.rating! ? "yellow.400" : "gray.300"}
-                                  fill={i < booking.rating! ? "yellow.400" : "none"}
-                                />
-                              ))}
-                            </HStack>
-                          )}
                         </HStack>
                         
-                        <HStack spacing="4" fontSize="sm" color="gray.500" mb="2">
-                          <HStack>
-                            <Icon as={FiCalendar} />
-                            <Text>{new Date(booking.date).toLocaleDateString()}</Text>
-                          </HStack>
-                          <Text>Provider: {booking.provider}</Text>
-                        </HStack>
-                        
-                        <Text fontWeight="medium" color="brand.500">
-                          {formatCurrency(booking.price)}
+                        <Text fontSize="sm" color="gray.500">
+                          Ngày: {new Date(booking.scheduled_date).toLocaleDateString('vi-VN')}
                         </Text>
                       </Box>
-                      
-                      <VStack spacing="2">
-                        {booking.status === 'completed' && !booking.rating && (
-                          <Button size="sm" colorScheme="brand">
-                            Rate Service
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline">
-                          Book Again
-                        </Button>
-                      </VStack>
                     </Flex>
                   </CardBody>
                 </Card>
@@ -372,65 +384,86 @@ export default function Utilities() {
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            Book Service: {selectedService?.name}
+            Đặt: {selectedService?.name}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb="6">
             {selectedService && (
               <VStack spacing="4" align="stretch">
-                <Box p="4" bg="gray.50" borderRadius="md">
-                  <Text fontWeight="semibold" mb="2">{selectedService.name}</Text>
-                  <Text fontSize="sm" color="gray.600" mb="3">
-                    {selectedService.description}
-                  </Text>
-                  <HStack justify="space-between">
-                    <Text fontSize="sm">Duration: {selectedService.duration}</Text>
+                <Box p="4" bg="blue.50" borderRadius="md">
+                   <HStack justify="space-between">
+                    <Text fontSize="sm" fontWeight="medium">Đơn giá:</Text>
                     <Text fontWeight="bold" color="brand.500">
-                      {formatCurrency(selectedService.price)}
+                      {formatCurrency(selectedService.price)} / {selectedService.unit}
                     </Text>
                   </HStack>
                 </Box>
 
-                <FormControl>
-                  <FormLabel>Preferred Date</FormLabel>
+                <FormControl isRequired>
+                  <FormLabel>Ngày sử dụng</FormLabel>
                   <Input
                     type="date"
+                    min={getTomorrowDate()} // SỬA: Chỉ cho phép đặt từ ngày mai
                     value={bookingData.date}
                     onChange={(e) => setBookingData({...bookingData, date: e.target.value})}
                   />
                 </FormControl>
 
-                <FormControl>
-                  <FormLabel>Preferred Time</FormLabel>
-                  <Select
-                    placeholder="Select time"
-                    value={bookingData.time}
-                    onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
-                  >
-                    <option value="09:00">9:00 AM</option>
-                    <option value="10:00">10:00 AM</option>
-                    <option value="11:00">11:00 AM</option>
-                    <option value="14:00">2:00 PM</option>
-                    <option value="15:00">3:00 PM</option>
-                    <option value="16:00">4:00 PM</option>
-                  </Select>
-                </FormControl>
+                <HStack>
+                  <FormControl isRequired>
+                    <FormLabel>Giờ bắt đầu</FormLabel>
+                    <Select
+                      value={bookingData.time}
+                      onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
+                    >
+                      <option value="08:00">08:00</option>
+                      <option value="09:00">09:00</option>
+                      <option value="10:00">10:00</option>
+                      <option value="13:00">13:00</option>
+                      <option value="14:00">14:00</option>
+                      <option value="15:00">15:00</option>
+                      <option value="16:00">16:00</option>
+                    </Select>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel>Số lượng ({selectedService.unit})</FormLabel>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      max={10} 
+                      value={bookingData.quantity}
+                      onChange={(e) => setBookingData({...bookingData, quantity: parseInt(e.target.value)})}
+                    />
+                  </FormControl>
+                </HStack>
 
                 <FormControl>
-                  <FormLabel>Special Notes</FormLabel>
+                  <FormLabel>Ghi chú đặc biệt</FormLabel>
                   <Textarea
-                    placeholder="Any special requirements or notes..."
+                    placeholder="Ví dụ: Cần mang thêm dụng cụ..."
                     value={bookingData.notes}
                     onChange={(e) => setBookingData({...bookingData, notes: e.target.value})}
                   />
                 </FormControl>
 
-                <HStack spacing="3">
-                  <Button flex="1" variant="outline" onClick={onClose}>
-                    Cancel
+                <Box pt={2}>
+                  <Text textAlign="right" fontWeight="bold">
+                    Tổng tiền dự kiến: {formatCurrency(selectedService.price * bookingData.quantity)}
+                  </Text>
+                </Box>
+
+                <HStack spacing="3" pt={2}>
+                  <Button flex="1" variant="ghost" onClick={onClose}>
+                    Đóng
                   </Button>
-                  <Button flex="1" colorScheme="brand">
-                    Confirm Booking
+                  <Button 
+                    flex="1" 
+                    colorScheme="brand" 
+                    onClick={handleSubmitBooking}
+                    isLoading={actionLoading}
+                  >
+                    Xác nhận đặt
                   </Button>
                 </HStack>
               </VStack>

@@ -52,16 +52,14 @@ export const authAPI = {
   },
   
   getCurrentUser: async () => {
-    const response = await api.get('/users/me') // Dùng /users/me hoặc /auth/me tùy backend map
+    const response = await api.get('/users/me')
     return response.data
   },
 
-  // 🌟 HÀM MỚI: Đổi mật khẩu
   changePassword: async (passwords: {
     old_password: string
     new_password: string
   }) => {
-    // Gọi endpoint POST /users/change-password (Giả định endpoint này là của Users Router)
     const response = await api.post('/users/change-password', passwords) 
     return response.data
   }
@@ -99,7 +97,6 @@ export const usersAPI = {
     return response.data
   },
   
-  // Cập nhật hồ sơ người dùng hiện tại (PUT /users/me)
   updateCurrentUser: async (userData: {
     full_name?: string
     email?: string
@@ -317,11 +314,26 @@ export const ticketsAPI = {
 }
 
 export const servicesAPI = {
-  getAll: async () => {
+  getAllServices: async () => {
     const response = await api.get('/services')
     return response.data
   },
   
+  getMyBookings: async (status?: string) => {
+    const response = await api.get('/services/bookings/my-bookings', { params: { status }})
+    return response.data
+  },
+
+  bookService: async (serviceId: number, bookingData: any) => {
+    const response = await api.post(`/services/${serviceId}/book`, bookingData)
+    return response.data
+  },
+
+  cancelBooking: async (bookingId: number) => {
+    const response = await api.post(`/services/bookings/${bookingId}/cancel`)
+    return response.data
+  },
+
   getById: async (id: number) => {
     const response = await api.get(`/services/${id}`)
     return response.data
@@ -383,6 +395,29 @@ export const cashflowAPI = {
   
   delete: async (id: number) => {
     const response = await api.delete(`/cashflow/${id}`)
+    return response.data
+  }
+}
+
+// 🌟 MỚI: Thêm vehiclesAPI
+export const vehiclesAPI = {
+  getMyVehicles: async () => {
+    const response = await api.get('/vehicles/my-vehicles')
+    return response.data
+  },
+
+  create: async (vehicleData: any) => {
+    const response = await api.post('/vehicles/', vehicleData)
+    return response.data
+  },
+
+  update: async (id: number, vehicleData: any) => {
+    const response = await api.put(`/vehicles/${id}`, vehicleData)
+    return response.data
+  },
+
+  delete: async (id: number) => {
+    const response = await api.delete(`/vehicles/${id}`)
     return response.data
   }
 }

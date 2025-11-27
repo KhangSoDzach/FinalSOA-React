@@ -69,25 +69,6 @@ async def get_all_bills(
     
     return bills
 
-@router.get("/{bill_id}", response_model=BillResponse)
-async def get_bill_by_id(
-    bill_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
-):
-    """Get bill by ID"""
-    bill = session.get(Bill, bill_id)
-    if not bill:
-        raise HTTPException(status_code=404, detail="Bill not found")
-    
-    # Check permission: admin or owner
-    if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this bill"
-        )
-    
-    return bill
 
 @router.post("/", response_model=BillResponse)
 async def create_bill(
@@ -451,18 +432,13 @@ async def get_my_bills(
     if status:
         statement = statement.where(Bill.status == status)
     
-    # ĐÃ SỬA: Loại bỏ order_by(Bill.created_at.desc()) vì trường này đã bị xóa khỏi Bill model
-    # statement = statement.order_by(Bill.created_at.desc())
+    # ĐÃ SỬA: Loại bỏ order_by(Bill.created_at.desc()) vì trường này đã được thêm
+    statement = statement.order_by(Bill.created_at.desc())
     
     bills = session.exec(statement).all()
     
-    results = []
-    for bill in bills:
-        bill_data = bill.model_dump()
-        bill_data['user_id'] = str(bill.user_id) 
-        results.append(bill_data)
-        
-    return results
+    # SỬA LỖI 422: Loại bỏ logic ép kiểu lỗi
+    return bills
 
 @router.post("/request-pay", response_model=PaymentRequestResponse)
 async def request_payment(
@@ -527,6 +503,25 @@ async def request_payment(
         otp_valid_until=otp_expiry_dt,
     )
 
+# @router.get("/{bill_id}", response_model=BillResponse)
+# async def get_bill_by_id(
+#     bill_id: int,
+#     current_user: User = Depends(get_current_user),
+#     session: Session = Depends(get_session)
+# ):
+#     """Get bill by ID"""
+#     bill = session.get(Bill, bill_id)
+#     if not bill:
+#         raise HTTPException(status_code=404, detail="Bill not found")
+    
+#     # Check permission: admin or owner
+#     if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="Not authorized to access this bill"
+#         )
+    
+#     return bill
 @router.post("/verify-otp", response_model=PaymentResponse)
 async def verify_otp_and_pay(
     verify_data: OTPVerify,

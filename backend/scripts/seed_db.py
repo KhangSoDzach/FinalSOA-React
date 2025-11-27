@@ -10,7 +10,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.core.config import settings
 from app.models.user import User, UserRole, OccupierType
 from app.models.bill import Bill, BillType, BillStatus
-from app.models.service import Service, ServiceCategory, ServiceStatus
+# THÊM: Import ServiceBooking và BookingStatus
+from app.models.service import Service, ServiceCategory, ServiceStatus, ServiceBooking, BookingStatus
 from app.models.notification import Notification, NotificationType, NotificationStatus
 from app.core.security import get_password_hash
 from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
@@ -130,10 +131,7 @@ def create_users():
     return users
     
 def create_tickets(users):
-    
-    
     tickets = [
-        
         Ticket(
             user_id=users[2].id, 
             title="Sửa chữa vòi nước bị rò rỉ khẩn cấp",
@@ -142,7 +140,6 @@ def create_tickets(users):
             priority=TicketPriority.URGENT, 
             status=TicketStatus.OPEN,
         ),
-        
         Ticket(
             user_id=users[2].id, 
             title="Phản ánh tiếng ồn từ căn hộ B202",
@@ -152,7 +149,6 @@ def create_tickets(users):
             status=TicketStatus.IN_PROGRESS,
             assigned_to=users[1].id, 
         ),
-        
         Ticket(
             user_id=users[2].id, 
             title="Yêu cầu vệ sinh hành lang Tầng 1",
@@ -165,7 +161,6 @@ def create_tickets(users):
             resolution_notes="Đã cử nhân viên vệ sinh dọn dẹp và xác nhận hoàn thành.",
             resolved_at=datetime.now(),
         ),
-        
         Ticket(
             user_id=users[2].id, 
             title="Đề xuất lắp đặt thêm ghế đá công viên",
@@ -174,7 +169,6 @@ def create_tickets(users):
             priority=TicketPriority.NORMAL,
             status=TicketStatus.OPEN,
         ),
-        
         Ticket(
             user_id=users[3].id, 
             title="Lỗi khóa cửa ra vào",
@@ -190,58 +184,77 @@ def create_tickets(users):
     ]
     return tickets
     
-def create_services():
+# HÀM MỚI: Tạo Service và Booking cùng lúc
+def create_services_and_bookings(users, session):
+    # 1. Tạo Services
     services = [
         Service(
-            name="Dọn dẹp nhà",
-            description="Dịch vụ dọn dẹp chung cư theo giờ",
+            name="Dọn dẹp căn hộ",
+            description="Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.",
             category=ServiceCategory.CLEANING,
-            price=Decimal("100000"),
+            price=Decimal("150000"),
             unit="giờ",
             status=ServiceStatus.ACTIVE,
-            available_days="1,2,3,4,5,6,7",  
-            available_time_start=time(8, 0),
-            available_time_end=time(18, 0),
-            advance_booking_hours=24,
-            max_booking_days=7,
-            provider_name="Công ty vệ sinh ABC",
-            provider_contact="0901111111",
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="CleanPro",
             created_at=datetime.now()
         ),
         Service(
-            name="Sửa chữa điện",
-            description="Dịch vụ sửa chữa điện trong chung cư",
+            name="Sửa chữa điện lạnh",
+            description="Bảo dưỡng máy lạnh, sửa tủ lạnh, máy giặt.",
             category=ServiceCategory.REPAIR,
-            price=Decimal("200000"),
+            price=Decimal("250000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
-            available_days="1,2,3,4,5",  
-            available_time_start=time(8, 0),
-            available_time_end=time(17, 0),
-            advance_booking_hours=48,
-            max_booking_days=14,
-            provider_name="Thợ điện XYZ",
-            provider_contact="0902222222",
-            created_at=datetime.now()
-        ),
-        Service(
-            name="Đặt phòng hội thảo",
-            description="Đặt phòng hội thảo trong tòa nhà",
-            category=ServiceCategory.ROOM_BOOKING,
-            price=Decimal("500000"),
-            unit="ngày",
-            status=ServiceStatus.ACTIVE,
-            available_days="1,2,3,4,5,6,7",
-            available_time_start=time(6, 0),
-            available_time_end=time(22, 0),
-            advance_booking_hours=72,
-            max_booking_days=30,
-            provider_name="Ban quản lý tòa nhà",
-            provider_contact="0903333333",
+            available_days="[0,1,2,3,4,5]",
+            provider_name="Điện Lạnh 24h",
             created_at=datetime.now()
         )
     ]
-    return services
+    
+    for s in services:
+        session.add(s)
+    session.commit()
+    
+    # Refresh để lấy ID
+    for s in services:
+        session.refresh(s)
+
+    # 2. Tạo Bookings
+    
+    # Booking 1: PENDING (Để test nút Cancel)
+    booking_pending = ServiceBooking(
+        booking_number="BK-PENDING-01",
+        service_id=services[0].id,
+        user_id=users[2].id, # user001
+        scheduled_date=datetime.now() + timedelta(days=2),
+        scheduled_time_start=time(9, 0),
+        unit_price=services[0].price,
+        quantity=2,
+        total_amount=services[0].price * 2,
+        status=BookingStatus.PENDING,
+        created_at=datetime.now()
+    )
+
+    # Booking 2: COMPLETED (Đã hoàn thành - KHÔNG có rating/feedback)
+    booking_completed = ServiceBooking(
+        booking_number="BK-COMPLETED-01",
+        service_id=services[1].id,
+        user_id=users[2].id,
+        scheduled_date=datetime.now() - timedelta(days=10),
+        scheduled_time_start=time(14, 0),
+        unit_price=services[1].price,
+        quantity=1,
+        total_amount=services[1].price,
+        status=BookingStatus.COMPLETED,
+        completed_at=datetime.now() - timedelta(days=10),
+        created_at=datetime.now() - timedelta(days=12)
+    )
+
+    session.add(booking_pending)
+    session.add(booking_completed)
+    session.commit()
+    print("✅ Created Services & Bookings scenarios (Pending & Completed)")
 
 def create_bills(users):
     bills = [
@@ -364,12 +377,9 @@ def main():
         print(f"✅ Created {len(users)} users")
 
         
-        print("🔧 Creating services...")
-        services = create_services()
-        for service in services:
-            session.add(service)
-        session.commit()
-        print(f"✅ Created {len(services)} services")
+        print("🔧 Creating services and bookings...")
+        # SỬA: Gọi hàm tạo Service & Booking thay vì create_services()
+        create_services_and_bookings(users, session)
 
         
         print("💳 Creating bills...")

@@ -7,7 +7,7 @@ from .bill import (
 from .cashflow import CashFlowCreate, CashFlowUpdate, CashFlowResponse, BankStatementCreate, BankStatementResponse, ReconcileRequest
 from .notification import NotificationCreate, NotificationUpdate, NotificationResponse, NotificationResponseCreate, NotificationStats
 from .ticket import TicketCreate, TicketUpdate, TicketResponse, TicketAssign, TicketResolve, TicketStats
-from .service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceBookingCreate, ServiceBookingUpdate, ServiceBookingResponse, BookingConfirm, BookingFeedback
+from .service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceBookingCreate, ServiceBookingUpdate, ServiceBookingResponse, BookingConfirm
 from .apartment import ApartmentCreate, ApartmentUpdate, ApartmentResponse, ApartmentWithResident, ApartmentRegisterUser
 from .vehicle import VehicleCreate, VehicleUpdate, VehicleResponse, VehicleWithUserResponse, VehicleApproval, VehicleStats
 
@@ -29,7 +29,7 @@ __all__ = [
     "TicketCreate", "TicketUpdate", "TicketResponse", "TicketAssign", "TicketResolve", "TicketStats",
     
     # Service schemas
-    "ServiceCreate", "ServiceUpdate", "ServiceResponse", "ServiceBookingCreate", "ServiceBookingUpdate", "ServiceBookingResponse", "BookingConfirm", "BookingFeedback",
+    "ServiceCreate", "ServiceUpdate", "ServiceResponse", "ServiceBookingCreate", "ServiceBookingUpdate", "ServiceBookingResponse", "BookingConfirm",
     
     # Apartment schemas
     "ApartmentCreate", "ApartmentUpdate", "ApartmentResponse", "ApartmentWithResident", "ApartmentRegisterUser",

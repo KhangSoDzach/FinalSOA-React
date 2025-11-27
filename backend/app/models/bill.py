@@ -32,6 +32,7 @@ class Bill(SQLModel, table=True):
     status: BillStatus = Field(default=BillStatus.PENDING)
     paid_at: Optional[datetime] = None
     
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     # Relationships
     user: Optional["User"] = Relationship(back_populates="bills")
     payments: List["Payment"] = Relationship(back_populates="bill")

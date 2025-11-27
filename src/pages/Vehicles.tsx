@@ -24,16 +24,19 @@ import {
   Select,
   useToast,
   Image,
+  Spinner,
+  Center
 } from '@chakra-ui/react'
 import { 
   FiPlus, 
   FiCheckCircle,
   FiXCircle,
   FiEdit,
-  FiTrash
+  FiTrash,
+  FiAlertCircle
 } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
-import api from '../services/api'
+import { vehiclesAPI } from '../services/api' // SỬA: Import vehiclesAPI từ api.ts
 
 interface Vehicle {
   id: number
@@ -73,6 +76,7 @@ export default function Vehicles() {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
   const toast = useToast()
   
   const [formData, setFormData] = useState({
@@ -90,8 +94,9 @@ export default function Vehicles() {
   const fetchVehicles = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/vehicles/my-vehicles')
-      setVehicles(response.data)
+      // SỬA: Gọi API thật
+      const data = await vehiclesAPI.getMyVehicles()
+      setVehicles(data)
     } catch (error) {
       console.error('Error fetching vehicles:', error)
       toast({
@@ -106,16 +111,34 @@ export default function Vehicles() {
   }
 
   const handleSubmit = async () => {
-    try {
-      await api.post('/vehicles/', formData)
+    // Validate đơn giản
+    if (!formData.license_plate || !formData.make || !formData.model) {
       toast({
-        title: 'Thành công',
-        description: 'Đăng ký xe thành công. Chờ xác nhận từ ban quản lý.',
-        status: 'success',
+        title: 'Thiếu thông tin',
+        description: 'Vui lòng điền đầy đủ thông tin bắt buộc',
+        status: 'warning',
         duration: 3000,
       })
+      return
+    }
+
+    try {
+      setActionLoading(true)
+      // SỬA: Gọi API Create
+      await vehiclesAPI.create(formData)
+      
+      toast({
+        title: 'Đăng ký thành công',
+        description: 'Thông tin xe đã được gửi và đang chờ Ban Quản Lý phê duyệt.',
+        status: 'success',
+        duration: 5000,
+      })
+      
       onClose()
+      // Refresh lại danh sách để thấy xe mới (status Pending)
       fetchVehicles()
+      
+      // Reset form
       setFormData({
         license_plate: '',
         make: '',
@@ -125,22 +148,24 @@ export default function Vehicles() {
       })
     } catch (error: any) {
       toast({
-        title: 'Lỗi',
-        description: error.response?.data?.detail || 'Không thể đăng ký xe',
+        title: 'Lỗi đăng ký',
+        description: error.response?.data?.detail || 'Không thể đăng ký xe. Vui lòng thử lại.',
         status: 'error',
-        duration: 3000,
+        duration: 4000,
       })
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc muốn xóa xe này?')) return
+    if (!confirm('Bạn có chắc muốn hủy đăng ký/xóa xe này?')) return
     
     try {
-      await api.delete(`/vehicles/${id}`)
+      await vehiclesAPI.delete(id)
       toast({
-        title: 'Thành công',
-        description: 'Đã xóa xe',
+        title: 'Đã xóa',
+        description: 'Đã xóa thông tin xe khỏi hệ thống',
         status: 'success',
         duration: 3000,
       })
@@ -161,176 +186,140 @@ export default function Vehicles() {
       <Flex mb="6" align="center">
         <Box>
           <Text fontSize="2xl" fontWeight="semibold">
-            Vehicle Registration
+            Đăng ký phương tiện
           </Text>
           <Text color="gray.600">
-            Manage your registered vehicles and parking
+            Quản lý danh sách xe và thẻ gửi xe của căn hộ
           </Text>
         </Box>
         <Spacer />
         <Button leftIcon={<FiPlus />} colorScheme="brand" onClick={onOpen}>
-          Register Vehicle
+          Đăng ký xe mới
         </Button>
       </Flex>
 
       {/* Vehicle Grid */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="6">
-        {loading ? (
-          <Card>
-            <CardBody>
-              <Text textAlign="center">Đang tải...</Text>
-            </CardBody>
-          </Card>
-        ) : vehicles.length === 0 ? (
-          <Card>
-            <CardBody>
-              <Text textAlign="center">Bạn chưa đăng ký xe nào</Text>
-            </CardBody>
-          </Card>
-        ) : (
-          vehicles.map((vehicle) => (
-            <Card key={vehicle.id}>
-              <CardBody>
-                <VStack spacing="4" align="stretch">
-                  {/* License Plate Image */}
-                  <Box textAlign="center" py="4" bg="gray.50" borderRadius="md">
-                    {vehicle.license_plate_image ? (
-                      <Image
-                        src={`http://localhost:8000${vehicle.license_plate_image}`}
-                        alt={`Biển số ${vehicle.license_plate}`}
-                        maxH="100px"
-                        mx="auto"
-                        objectFit="contain"
-                        borderRadius="md"
-                      />
-                    ) : (
-                      <VStack spacing={2}>
-                        <Icon as={FiCheckCircle} boxSize="12" color="gray.400" />
-                        <Text fontWeight="bold" fontSize="lg">
-                          {vehicle.license_plate}
-                        </Text>
-                      </VStack>
-                    )}
-                  </Box>
-                  
-                  {/* Vehicle Info */}
-                  <VStack spacing="2" align="stretch">
-                    <HStack justify="space-between">
-                      <Badge colorScheme={getStatusColor(vehicle.status)}>
-                        {vehicle.status === 'pending' && 'CHỜ XÁC NHẬN'}
-                        {vehicle.status === 'active' && 'ACTIVE'}
-                        {vehicle.status === 'expired' && 'HẾT HẠN'}
-                        {vehicle.status === 'rejected' && 'BỊ TỪ CHỐI'}
-                      </Badge>
-                    </HStack>
-                    
-                    <Text color="gray.600">
-                      {vehicle.make} {vehicle.model}
-                    </Text>
-                    
-                    <HStack justify="space-between" fontSize="sm" color="gray.500">
-                      <Text>Màu: {vehicle.color}</Text>
-                      <Text>Loại: {getTypeLabel(vehicle.vehicle_type)}</Text>
-                    </HStack>
-                    
-                    {vehicle.parking_spot && (
-                      <HStack justify="space-between" fontSize="sm">
-                        <Text color="gray.500">Vị trí đỗ:</Text>
-                        <Text fontWeight="medium" color="brand.500">
-                          {vehicle.parking_spot}
-                        </Text>
-                      </HStack>
-                    )}
-                    
-                    {vehicle.expires_at && (
-                      <HStack justify="space-between" fontSize="sm" color="gray.500">
-                        <Text>Hết hạn:</Text>
-                        <Text>{new Date(vehicle.expires_at).toLocaleDateString('vi-VN')}</Text>
-                      </HStack>
-                    )}
-                    
-                    {vehicle.rejection_reason && (
-                      <Box p="2" bg="red.50" borderRadius="md">
-                        <Text fontSize="xs" color="red.700">
-                          Lý do: {vehicle.rejection_reason}
-                        </Text>
-                      </Box>
-                    )}
-                  </VStack>
-                  
-                  {/* Action Buttons */}
-                  <HStack spacing="2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      leftIcon={<FiEdit />} 
-                      flex="1"
-                      isDisabled={vehicle.status === 'active'}
-                    >
-                      Sửa
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      colorScheme="red" 
-                      leftIcon={<FiTrash />}
-                      onClick={() => handleDelete(vehicle.id)}
-                    >
-                      Xóa
-                    </Button>
-                  </HStack>
+      {loading ? (
+        <Center h="200px">
+          <Spinner size="xl" color="brand.500" />
+        </Center>
+      ) : (
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="6">
+          {vehicles.length === 0 ? (
+            <Card width="100%" gridColumn={{md: "span 2", lg: "span 3"}}>
+              <CardBody py={10}>
+                <VStack spacing={4}>
+                  <Icon as={FiAlertCircle} boxSize={10} color="gray.400" />
+                  <Text textAlign="center" color="gray.500">
+                    Bạn chưa đăng ký phương tiện nào.
+                  </Text>
+                  <Button variant="outline" colorScheme="brand" onClick={onOpen}>
+                    Đăng ký ngay
+                  </Button>
                 </VStack>
               </CardBody>
             </Card>
-          ))
-        )}
-        
-        {/* Add New Vehicle Card */}
-        {vehicles.length < 4 && (
-          <Card 
-            cursor="pointer" 
-            borderStyle="dashed" 
-            borderWidth="2px"
-            borderColor="gray.300"
-            _hover={{ borderColor: 'brand.300', bg: 'brand.50' }}
-            onClick={onOpen}
-          >
-            <CardBody>
-              <VStack spacing="4" justify="center" h="full" textAlign="center" py="8">
-                <Icon as={FiPlus} boxSize="12" color="gray.400" />
-                <Text fontWeight="medium" color="gray.600">
-                  Đăng ký xe mới
-                </Text>
-              </VStack>
-            </CardBody>
-          </Card>
-        )}
-      </SimpleGrid>
+          ) : (
+            vehicles.map((vehicle) => (
+              <Card key={vehicle.id} _hover={{ shadow: 'md' }} transition="all 0.2s">
+                <CardBody>
+                  <VStack spacing="4" align="stretch">
+                    {/* Vehicle Header & Status */}
+                    <Flex justify="space-between" align="start">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="bold" fontSize="xl" color="gray.700">
+                          {vehicle.license_plate}
+                        </Text>
+                        <Text fontSize="sm" color="gray.500">
+                          {vehicle.make} {vehicle.model}
+                        </Text>
+                      </VStack>
+                      <Badge colorScheme={getStatusColor(vehicle.status)} px={2} py={1} borderRadius="md">
+                        {vehicle.status === 'pending' && 'CHỜ DUYỆT'}
+                        {vehicle.status === 'active' && 'ĐANG HOẠT ĐỘNG'}
+                        {vehicle.status === 'expired' && 'HẾT HẠN'}
+                        {vehicle.status === 'rejected' && 'BỊ TỪ CHỐI'}
+                      </Badge>
+                    </Flex>
+                    
+                    <Box h="1px" bg="gray.100" />
+                    
+                    {/* Vehicle Info */}
+                    <VStack spacing="2" align="stretch">
+                      <HStack justify="space-between" fontSize="sm">
+                        <Text color="gray.500">Loại xe:</Text>
+                        <Text fontWeight="medium">{getTypeLabel(vehicle.vehicle_type)}</Text>
+                      </HStack>
+                      <HStack justify="space-between" fontSize="sm">
+                        <Text color="gray.500">Màu sắc:</Text>
+                        <Text fontWeight="medium">{vehicle.color}</Text>
+                      </HStack>
+                      
+                      {vehicle.parking_spot && (
+                        <HStack justify="space-between" fontSize="sm" bg="green.50" p={2} borderRadius="md">
+                          <Text color="green.700" fontWeight="medium">Vị trí đỗ:</Text>
+                          <Text fontWeight="bold" color="green.700">
+                            {vehicle.parking_spot}
+                          </Text>
+                        </HStack>
+                      )}
+                      
+                      {vehicle.expires_at && vehicle.status === 'active' && (
+                        <HStack justify="space-between" fontSize="sm">
+                          <Text color="gray.500">Hết hạn:</Text>
+                          <Text>{new Date(vehicle.expires_at).toLocaleDateString('vi-VN')}</Text>
+                        </HStack>
+                      )}
+                      
+                      {vehicle.rejection_reason && (
+                        <Box p="3" bg="red.50" borderRadius="md" border="1px dashed" borderColor="red.200">
+                          <Text fontSize="xs" fontWeight="bold" color="red.700" mb={1}>
+                            Lý do từ chối:
+                          </Text>
+                          <Text fontSize="xs" color="red.600">
+                            {vehicle.rejection_reason}
+                          </Text>
+                        </Box>
+                      )}
+                    </VStack>
+                    
+                    {/* Action Buttons */}
+                    <HStack spacing="2" pt={2}>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        colorScheme="red" 
+                        leftIcon={<FiTrash />}
+                        onClick={() => handleDelete(vehicle.id)}
+                        w="full"
+                      >
+                        {vehicle.status === 'pending' ? 'Hủy yêu cầu' : 'Xóa xe'}
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+            ))
+          )}
+        </SimpleGrid>
+      )}
 
       {/* Registration Guidelines */}
-      <Card mt="8">
+      <Card mt="8" bg="blue.50" borderColor="blue.100" borderWidth="1px">
         <CardBody>
-          <Text fontSize="lg" fontWeight="semibold" mb="4">
-            Hướng dẫn đăng ký
-          </Text>
-          <VStack spacing="3" align="stretch">
-            <HStack>
-              <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Mỗi căn hộ có thể đăng ký tối đa 2 ô tô và 2 xe máy</Text>
-            </HStack>
-            <HStack>
-              <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Đăng ký xe có hiệu lực 1 năm</Text>
-            </HStack>
-            <HStack>
-              <Icon as={FiCheckCircle} color="green.500" />
-              <Text>Vị trí đỗ xe sẽ được phân công dựa trên tình trạng còn trống</Text>
-            </HStack>
-            <HStack>
-              <Icon as={FiXCircle} color="red.500" />
-              <Text>Xe chưa đăng ký sẽ bị kéo đi</Text>
-            </HStack>
-          </VStack>
+          <Flex gap={4}>
+            <Icon as={FiCheckCircle} color="blue.500" boxSize={6} mt={1} />
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb="2" color="blue.700">
+                Lưu ý khi đăng ký
+              </Text>
+              <VStack spacing="1" align="stretch" color="blue.600" fontSize="sm">
+                <Text>• Mỗi căn hộ được đăng ký tối đa 2 ô tô và 2 xe máy.</Text>
+                <Text>• Đơn đăng ký sẽ được Ban Quản Lý duyệt trong vòng 24h.</Text>
+                <Text>• Vui lòng nhập đúng biển số xe để hệ thống nhận diện tự động khi ra vào.</Text>
+              </VStack>
+            </Box>
+          </Flex>
         </CardBody>
       </Card>
 
@@ -342,16 +331,16 @@ export default function Vehicles() {
           <ModalCloseButton />
           <ModalBody pb="6">
             <VStack spacing="4" align="stretch">
-              <FormControl>
+              <FormControl isRequired>
                 <FormLabel>Biển số xe</FormLabel>
                 <Input
                   placeholder="Ví dụ: 30A-123.45"
                   value={formData.license_plate}
-                  onChange={(e) => setFormData({...formData, license_plate: e.target.value})}
+                  onChange={(e) => setFormData({...formData, license_plate: e.target.value.toUpperCase()})}
                 />
               </FormControl>
 
-              <FormControl>
+              <FormControl isRequired>
                 <FormLabel>Loại xe</FormLabel>
                 <Select
                   value={formData.vehicle_type}
@@ -364,40 +353,46 @@ export default function Vehicles() {
               </FormControl>
 
               <HStack spacing="4">
-                <FormControl>
+                <FormControl isRequired>
                   <FormLabel>Hãng xe</FormLabel>
                   <Input
-                    placeholder="Ví dụ: Toyota"
+                    placeholder="Ví dụ: Toyota, Honda..."
                     value={formData.make}
                     onChange={(e) => setFormData({...formData, make: e.target.value})}
                   />
                 </FormControl>
 
-                <FormControl>
+                <FormControl isRequired>
                   <FormLabel>Dòng xe</FormLabel>
                   <Input
-                    placeholder="Ví dụ: Camry"
+                    placeholder="Ví dụ: Camry, Vision..."
                     value={formData.model}
                     onChange={(e) => setFormData({...formData, model: e.target.value})}
                   />
                 </FormControl>
               </HStack>
 
-              <FormControl>
+              <FormControl isRequired>
                 <FormLabel>Màu sắc</FormLabel>
                 <Input
-                  placeholder="Ví dụ: Trắng"
+                  placeholder="Ví dụ: Trắng, Đen..."
                   value={formData.color}
                   onChange={(e) => setFormData({...formData, color: e.target.value})}
                 />
               </FormControl>
 
-              <HStack spacing="3">
+              <HStack spacing="3" pt={4}>
                 <Button flex="1" variant="outline" onClick={onClose}>
                   Hủy
                 </Button>
-                <Button flex="1" colorScheme="brand" onClick={handleSubmit}>
-                  Đăng ký xe
+                <Button 
+                  flex="1" 
+                  colorScheme="brand" 
+                  onClick={handleSubmit}
+                  isLoading={actionLoading}
+                  loadingText="Đang gửi..."
+                >
+                  Gửi đăng ký
                 </Button>
               </HStack>
             </VStack>

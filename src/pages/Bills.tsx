@@ -41,13 +41,14 @@ import { useEffect, useState, useRef } from 'react';
 import { billsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext'; 
 
+// Interface linh hoạt chấp nhận cả trạng thái cũ và mới
 interface Bill {
   id: number; 
   title: string;
   type: string;
   amount: number;
   dueDate: string;
-  status: 'paid' | 'unpaid' | 'overdue';
+  status: 'paid' | 'pending' | 'unpaid' | 'overdue' | 'cancelled';
   description: string;
 }
 
@@ -55,7 +56,6 @@ interface PaymentRequestResponse {
   payment_id: number; 
   message: string;
   bill_amount: number;
-  // ĐÃ XÓA: otp_valid_until: string; 
 }
 
 const formatCurrency = (amount: number) => {
@@ -69,7 +69,10 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case 'paid': return 'green';
     case 'overdue': return 'red';
-    default: return 'orange';
+    case 'pending': return 'orange'; 
+    case 'unpaid': return 'orange'; // Xử lý 'unpaid' giống như 'pending'
+    case 'cancelled': return 'gray';
+    default: return 'gray';
   }
 };
 
@@ -113,7 +116,7 @@ export default function Bills() {
   };
 
   const startResendTimer = () => {
-    setResendCountdown(60); // 60 seconds countdown
+    setResendCountdown(60); 
     if (resendTimerRef.current) clearInterval(resendTimerRef.current);
 
     resendTimerRef.current = setInterval(() => {
@@ -127,7 +130,6 @@ export default function Bills() {
     }, 1000);
   };
   
-  // Effect theo dõi thời gian hiệu lực OTP (ĐÃ SỬA: Logic chỉ dựa vào validUntil cục bộ)
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     
@@ -178,12 +180,28 @@ export default function Bills() {
 
   const fetchBills = async () => {
     try {
-      const unpaid = await billsAPI.getMyBills('pending');
-      const formattedUnpaid: Bill[] = unpaid.map((b: any) => ({
+      let pending: any[] = [];
+      
+      // === CƠ CHẾ SMART FALLBACK ===
+      // 1. Thử gọi với 'pending' (chuẩn mới)
+      try {
+        pending = await billsAPI.getMyBills('pending');
+      } catch (err: any) {
+        // 2. Nếu lỗi 422 (Server cũ không hiểu 'pending'), thử lại với 'unpaid'
+        if (err.response && err.response.status === 422) {
+           console.warn("Backend rejected 'pending', switching to 'unpaid' mode.");
+           pending = await billsAPI.getMyBills('unpaid');
+        } else {
+           // Nếu lỗi khác (500, 401...) thì ném lỗi ra ngoài
+           throw err;
+        }
+      }
+
+      const formattedPending: Bill[] = pending.map((b: any) => ({
         ...b,
         id: Number(b.id),
       }));
-      setUnpaidBills(formattedUnpaid);
+      setUnpaidBills(formattedPending);
 
       const paid = await billsAPI.getMyBills('paid');
       const formattedPaid: Bill[] = paid.map((b: any) => ({
@@ -192,16 +210,20 @@ export default function Bills() {
       }));
       setPaidBills(formattedPaid);
 
-      const total = formattedUnpaid.reduce((sum: number, bill: Bill) => {
+      const total = formattedPending.reduce((sum: number, bill: Bill) => {
         return Number(sum) + Number(bill.amount);
     }, 0); 
     setTotalOutstanding(total);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching bills:', error);
+      const errorDetail = error.response?.data?.detail 
+        ? JSON.stringify(error.response.data.detail) 
+        : 'Không thể tải danh sách hóa đơn.';
+        
       toast({
         title: 'Lỗi tải hóa đơn',
-        description: 'Không thể tải danh sách hóa đơn.',
+        description: errorDetail,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -234,7 +256,6 @@ export default function Bills() {
         ? await billsAPI.resendOTP(billId)
         : await billsAPI.requestPayment(billId);
 
-      // SỬA: Tự tính thời gian hết hạn (5 phút = 300,000 milliseconds)
       const validUntilDate = new Date(new Date().getTime() + 300000); 
 
       setOtpData({
@@ -243,7 +264,7 @@ export default function Bills() {
         validUntil: validUntilDate,
         billAmount: response.bill_amount,
       });
-      setIsOTPSent(true); // Chuyển sang giao diện nhập OTP
+      setIsOTPSent(true); 
       startResendTimer();
       
       toast({
@@ -283,7 +304,6 @@ export default function Bills() {
       return;
     }
     
-    // Kiểm tra hết hạn trên frontend trước khi gửi
     if (otpData.validUntil && otpData.validUntil.getTime() <= new Date().getTime()) {
       setIsOTPSent(false);
       toast({
@@ -328,7 +348,6 @@ export default function Bills() {
 
   return (
     <Box>
-      {/* Payment Summary - ĐÃ XÓA NÚT THANH TOÁN TẤT CẢ */}
       <Card mb="8" bg="linear-gradient(to right, #4c66f5, #6c82ff)" color="white">
         <CardBody>
           <Flex align="center">
@@ -346,7 +365,6 @@ export default function Bills() {
         </CardBody>
       </Card>
 
-      {/* Bills Tabs */}
       <Tabs>
         <TabList>
           <Tab>Hóa đơn chưa trả ({unpaidBills.length})</Tab>
@@ -354,7 +372,6 @@ export default function Bills() {
         </TabList>
 
         <TabPanels>
-          {/* Unpaid Bills */}
           <TabPanel p="0" pt="6">
             <VStack spacing="4" align="stretch">
               {unpaidBills.length === 0 ? (
@@ -400,7 +417,7 @@ export default function Bills() {
                               size="sm"
                               colorScheme="brand"
                               leftIcon={<FiCreditCard />}
-                              onClick={() => handlePayBill(bill.id)} // bill.id là number
+                              onClick={() => handlePayBill(bill.id)}
                             >
                               Thanh toán ngay
                             </Button>
@@ -414,7 +431,6 @@ export default function Bills() {
             </VStack>
           </TabPanel>
 
-          {/* Paid History */}
           <TabPanel p="0" pt="6">
             <VStack spacing="4" align="stretch">
               {paidBills.length === 0 ? (
@@ -467,7 +483,6 @@ export default function Bills() {
         </TabPanels>
       </Tabs>
 
-      {/* OTP Payment Modal */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
@@ -488,7 +503,6 @@ export default function Bills() {
                   </CardBody>
                 </Card>
 
-                {/* Giao diện Gửi OTP (Bước 1) */}
                 {!isOTPSent ? (
                   <VStack w="full" spacing={4}>
                     <Text textAlign="center" color="gray.700">
@@ -505,7 +519,6 @@ export default function Bills() {
                     </Button>
                   </VStack>
                 ) : (
-                  /* Giao diện Nhập OTP (Bước 2) */
                   <VStack w="full" spacing={4}>
                     <Text textAlign="center" color="gray.700">
                       Mã OTP đã được gửi đến email đăng ký của bạn. Vui lòng nhập mã dưới đây để xác minh.
