@@ -4,8 +4,9 @@ from typing import List, Optional
 from app.core.database import get_session
 from app.api.dependencies import get_current_user, get_current_admin_user
 from app.models.user import User, OccupierType, UserRole
-from app.schemas.user import UserResponse, UserUpdate, UserCreate, PasswordChange
+from app.schemas.user import UserResponse, UserUpdate, UserCreate, PasswordChange, BalanceUpdate, BalanceResponse
 from app.core.security import get_password_hash, verify_password
+from decimal import Decimal
 
 router = APIRouter()
 
@@ -265,3 +266,64 @@ async def get_users_stats(
         },
         "buildings": buildings_data
     }
+
+@router.post("/top-up", response_model=BalanceResponse)
+async def top_up_balance(
+    balance_data: BalanceUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Top up balance for current user"""
+    if balance_data.amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Số tiền nạp phải lớn hơn 0"
+        )
+    
+    # Update user balance
+    current_user.balance += Decimal(str(balance_data.amount))
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    
+    return BalanceResponse(
+        user_id=current_user.id,
+        balance=float(current_user.balance),
+        message=f"Nạp tiền thành công {balance_data.amount:,.0f} VNĐ"
+    )
+
+@router.post("/{user_id}/update-balance", response_model=BalanceResponse)
+async def admin_update_user_balance(
+    user_id: int,
+    balance_data: BalanceUpdate,
+    current_user: User = Depends(get_current_admin_user),
+    session: Session = Depends(get_session)
+):
+    """Update user balance (admin only) - can add or subtract"""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Update balance (can be positive or negative)
+    new_balance = user.balance + Decimal(str(balance_data.amount))
+    
+    if new_balance < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Số dư không thể âm. Số dư hiện tại: {float(user.balance):,.0f}, Thay đổi: {balance_data.amount:,.0f}"
+        )
+    
+    user.balance = new_balance
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    action = "Nạp" if balance_data.amount > 0 else "Trừ"
+    return BalanceResponse(
+        user_id=user.id,
+        balance=float(user.balance),
+        message=f"{action} {abs(balance_data.amount):,.0f} VNĐ thành công. Số dư mới: {float(user.balance):,.0f} VNĐ"
+    )

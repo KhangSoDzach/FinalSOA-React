@@ -432,8 +432,8 @@ async def get_my_bills(
     if status:
         statement = statement.where(Bill.status == status)
     
-    # ĐÃ SỬA: Loại bỏ order_by(Bill.created_at.desc()) vì trường này đã được thêm
-    statement = statement.order_by(Bill.created_at.desc())
+    # Sắp xếp theo due_date giảm dần (bill mới nhất trước)
+    statement = statement.order_by(Bill.due_date.desc())
     
     bills = session.exec(statement).all()
     

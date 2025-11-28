@@ -37,6 +37,7 @@ interface UserProfile {
   unit: string;
   relationship: string; 
   joinDate: string;
+  balance: number;
 }
 
 // Hàm chuyển đổi dữ liệu thô từ API sang UserProfile format
@@ -55,6 +56,7 @@ const mapApiToProfile = (data: any): UserProfile => {
       unit: unit,
       relationship: residentRelationship,
       joinDate: data.created_at || new Date().toISOString(),
+      balance: data.balance || 0,
   };
 };
 
@@ -341,6 +343,13 @@ export default function Profile() {
                               <Text color="gray.600">Join Date:</Text>
                               <Text fontWeight="medium">
                                   {new Date(profile.joinDate).toLocaleDateString('vi-VN')}
+                              </Text>
+                          </HStack>
+
+                          <HStack justify="space-between" pt={2} borderTop="1px" borderColor="gray.200">
+                              <Text color="gray.600" fontWeight="semibold">Số dư:</Text>
+                              <Text fontWeight="bold" fontSize="lg" color="green.500">
+                                  {profile.balance.toLocaleString('vi-VN')} VNĐ
                               </Text>
                           </HStack>
                       </VStack>

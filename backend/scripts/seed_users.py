@@ -12,6 +12,8 @@ from sqlmodel import Session, select
 from app.core.database import engine
 from app.models.user import User, UserRole, OccupierType
 from app.core.security import get_password_hash
+from decimal import Decimal
+import random
 
 def create_sample_users():
     """Create sample users with different roles and buildings"""
@@ -244,10 +246,24 @@ def create_sample_users():
                 print(f"⚠️  User {user_data['username']} already exists, skipping...")
                 continue
             
-            # Create user with hashed password
+            # Tạo số dư ngẫu nhiên cho users
+            balance = Decimal("0.00")  # Default cho admin/manager
+            
+            if user_data["role"] == UserRole.USER:
+                # User thường có số dư từ 500k đến 5 triệu
+                balance = Decimal(str(random.randint(500000, 5000000)))
+            elif user_data["role"] == UserRole.MANAGER:
+                # Manager có số dư từ 1 triệu đến 3 triệu
+                balance = Decimal(str(random.randint(1000000, 3000000)))
+            else:
+                # Admin có số dư 10 triệu
+                balance = Decimal("10000000.00")
+            
+            # Create user with hashed password and balance
             user = User(
                 **user_data,
-                hashed_password=get_password_hash("123456")  # Default password
+                hashed_password=get_password_hash("123456"),  # Default password
+                balance=balance
             )
             session.add(user)
             created_count += 1

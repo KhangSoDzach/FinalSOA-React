@@ -195,6 +195,25 @@ export default function Header({ title }: HeaderProps) {
               )}
             </MenuList>
           </Menu>
+
+          {/* Balance Display */}
+          <Box
+            px="4"
+            py="2"
+            bg="green.50"
+            borderRadius="md"
+            borderWidth="1px"
+            borderColor="green.200"
+          >
+            <VStack spacing="0" align="flex-end">
+              <Text fontSize="xs" color="gray.600">
+                Số dư
+              </Text>
+              <Text fontSize="md" fontWeight="bold" color="green.600">
+                {(user?.balance || 0).toLocaleString('vi-VN')} VNĐ
+              </Text>
+            </VStack>
+          </Box>
           
           {/* User Menu */}
           <Menu>

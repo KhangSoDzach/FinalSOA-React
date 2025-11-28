@@ -39,7 +39,8 @@ import {
 } from 'react-icons/fi';
 import { useEffect, useState, useRef } from 'react';
 import { billsAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext'; 
+import { useAuth } from '../contexts/AuthContext';
+import { authAPI } from '../services/api';
 
 // Interface linh hoạt chấp nhận cả trạng thái cũ và mới
 interface Bill {
@@ -78,7 +79,7 @@ const getStatusColor = (status: string) => {
 
 export default function Bills() {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { user } = useAuth(); 
+  const { user, refreshUser } = useAuth(); 
   
   const [unpaidBills, setUnpaidBills] = useState<Bill[]>([]);
   const [paidBills, setPaidBills] = useState<Bill[]>([]);
@@ -319,6 +320,9 @@ export default function Bills() {
     setIsVerifying(true);
     try {
       const paymentResponse = await billsAPI.verifyOTP(paymentId, otpData.otpCode);
+      
+      // Cập nhật lại thông tin user (bao gồm balance)
+      await refreshUser();
       
       toast({
         title: 'Thanh toán thành công!',

@@ -22,6 +22,7 @@ import {
   FiAlertCircle
 } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 const quickAccessItems = [
   {
@@ -56,9 +57,53 @@ const quickAccessItems = [
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   return (
     <Box>
+      {/* Balance Overview */}
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6" mb="8">
+        <Card bg="gradient-to-br from-green-400 to-green-600" color="white">
+          <CardBody>
+            <Stat>
+              <StatLabel color="whiteAlpha.900">Số dư tài khoản</StatLabel>
+              <StatNumber fontSize="3xl">
+                {(user?.balance || 0).toLocaleString('vi-VN')} VNĐ
+              </StatNumber>
+              <StatHelpText color="whiteAlpha.800">
+                <Icon as={FiDollarSign} mr="1" />
+                Có thể thanh toán hóa đơn
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <Stat>
+              <StatLabel>Hóa đơn chờ thanh toán</StatLabel>
+              <StatNumber fontSize="3xl">0</StatNumber>
+              <StatHelpText>
+                <Icon as={FiAlertCircle} mr="1" />
+                Cần xử lý
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <Stat>
+              <StatLabel>Tình trạng</StatLabel>
+              <StatNumber fontSize="3xl" color="green.500">Tốt</StatNumber>
+              <StatHelpText>
+                Không có vấn đề cần xử lý
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+      </SimpleGrid>
+
       {/* Quick Access Section */}
       <Card mb="8">
         <CardBody>

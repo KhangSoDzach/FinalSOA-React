@@ -59,7 +59,7 @@ def create_users():
         ),
         User(
             username="user002",
-            email="user002@apartment.com",
+            email="lexa61313@gmail.com",
             hashed_password=get_password_hash("user123"),
             full_name="Trần Thị B", 
             phone="0901234568",

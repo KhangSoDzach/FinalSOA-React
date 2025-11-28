@@ -11,6 +11,7 @@ interface User {
   building?: string
   role: string
   is_active: boolean
+  balance?: number
 }
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   token: string | null
   login: (username: string, password: string) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
 }
@@ -83,6 +85,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user')
   }
 
+  const refreshUser = async () => {
+    try {
+      const userInfo = await authAPI.getCurrentUser()
+      setUser(userInfo)
+      localStorage.setItem('user', JSON.stringify(userInfo))
+    } catch (error) {
+      console.error('Refresh user error:', error)
+    }
+  }
+
   const isAuthenticated = !!token && !!user
 
   const value: AuthContextType = {
@@ -90,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     login,
     logout,
+    refreshUser,
     isLoading,
     isAuthenticated,
   }

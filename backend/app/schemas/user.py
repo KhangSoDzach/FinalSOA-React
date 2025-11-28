@@ -53,3 +53,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class BalanceUpdate(BaseModel):
+    amount: float
+
+class BalanceResponse(BaseModel):
+    user_id: int
+    balance: float
+    message: str

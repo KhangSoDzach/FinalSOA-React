@@ -20,9 +20,7 @@ def seed_vehicles():
         existing = session.exec(select(Vehicle)).first()
         if existing:
             print("Vehicles already exist, skipping...")
-            # Uncomment dòng dưới nếu muốn xóa sạch dữ liệu cũ để test lại
-            # session.exec(delete(Vehicle)) 
-            # session.commit()
+
             return
         
         # Lấy user test chính (user001) để gán xe cho dễ thấy
