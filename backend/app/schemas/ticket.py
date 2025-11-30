@@ -33,10 +33,14 @@ class TicketUpdate(BaseModel):
     # Các trường Admin có thể cập nhật
     status: Optional[TicketStatus] = None
     assigned_to: Optional[int] = None 
+    assigned_name: Optional[str] = None
+    assigned_role: Optional[str] = None
     resolution_notes: Optional[str] = None
     
 class TicketAssign(BaseModel):
-    assigned_to: int 
+    assigned_name: str
+    assigned_role: str
+    status: Optional[TicketStatus] = None  # Cho phép thay đổi trạng thái khi assign 
 
 class TicketResolve(BaseModel):
     resolution_notes: str
@@ -58,6 +62,8 @@ class TicketResponse(TicketBase):
     
     status: TicketStatus
     assigned_to: Optional[int] = None
+    assigned_name: Optional[str] = None
+    assigned_role: Optional[str] = None
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[int] = None
     resolution_notes: Optional[str] = None

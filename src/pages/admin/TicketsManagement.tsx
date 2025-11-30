@@ -86,6 +86,8 @@ interface TicketResponse {
   resolved_by_user?: UserBase;
 
   assigned_to?: number;
+  assigned_name?: string;
+  assigned_role?: string;
   resolved_at?: string;
   resolution_notes?: string;
 }
@@ -155,12 +157,16 @@ export default function TicketsManagement() {
     onOpen: onResolveOpen,
     onClose: onResolveClose,
   } = useDisclosure();
+  const {
+    isOpen: isStatusOpen,
+    onOpen: onStatusOpen,
+    onClose: onStatusClose,
+  } = useDisclosure();
 
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<TicketResponse[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<TicketResponse | null>(null);
   const [stats, setStats] = useState<TicketStats | null>(null);
-  const [users, setUsers] = useState<UserBase[]>([]);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -168,7 +174,10 @@ export default function TicketsManagement() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
   // Form states
-  const [assignedUserId, setAssignedUserId] = useState<number>(0);
+  const [assignedName, setAssignedName] = useState<string>('');
+  const [assignedRole, setAssignedRole] = useState<string>('');
+  const [assignStatus, setAssignStatus] = useState<string>('in_progress');
+  const [newStatus, setNewStatus] = useState<string>('open');
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
 
   const toast = useToast();
@@ -200,18 +209,12 @@ export default function TicketsManagement() {
   };
 
   const fetchUsers = async () => {
-    try {
-      const data = await usersAPI.getAll();
-      setUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
+    // Removed - no longer needed
   };
 
   useEffect(() => {
     fetchTickets();
     fetchStats();
-    fetchUsers();
   }, []);
 
   // Apply filters
@@ -251,15 +254,17 @@ export default function TicketsManagement() {
   // Open assign modal
   const handleOpenAssign = (ticket: TicketResponse) => {
     setSelectedTicket(ticket);
-    setAssignedUserId(ticket.assigned_to || 0);
+    setAssignedName(ticket.assigned_name || '');
+    setAssignedRole(ticket.assigned_role || '');
+    setAssignStatus(ticket.status === 'open' ? 'in_progress' : ticket.status);
     onAssignOpen();
   };
 
   // Assign ticket
   const handleAssignSubmit = async () => {
-    if (!selectedTicket || !assignedUserId) {
+    if (!selectedTicket || !assignedName.trim() || !assignedRole.trim()) {
       toast({
-        title: 'Please select a user to assign.',
+        title: 'Vui lòng nhập đầy đủ tên và chức vụ',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -268,9 +273,13 @@ export default function TicketsManagement() {
     }
 
     try {
-      await ticketsAPI.assignTicket(selectedTicket.id, assignedUserId);
+      await ticketsAPI.assignTicket(selectedTicket.id, {
+        assigned_name: assignedName,
+        assigned_role: assignedRole,
+        status: assignStatus,
+      });
       toast({
-        title: 'Ticket assigned successfully!',
+        title: 'Phân công ticket thành công!',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -281,7 +290,7 @@ export default function TicketsManagement() {
     } catch (error) {
       console.error('Error assigning ticket:', error);
       toast({
-        title: 'Failed to assign ticket.',
+        title: 'Lỗi khi phân công ticket',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -333,21 +342,30 @@ export default function TicketsManagement() {
   };
 
   // Update ticket status
-  const handleUpdateStatus = async (ticketId: number, newStatus: string) => {
+  const handleOpenStatusChange = (ticket: TicketResponse) => {
+    setSelectedTicket(ticket);
+    setNewStatus(ticket.status);
+    onStatusOpen();
+  };
+
+  const handleStatusChangeSubmit = async () => {
+    if (!selectedTicket) return;
+
     try {
-      await ticketsAPI.update(ticketId, { status: newStatus });
+      await ticketsAPI.update(selectedTicket.id, { status: newStatus });
       toast({
-        title: `Ticket status updated to ${newStatus.toUpperCase()}`,
+        title: `Cập nhật trạng thái thành ${newStatus.toUpperCase()}`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+      onStatusClose();
       fetchTickets();
       fetchStats();
     } catch (error) {
       console.error('Error updating ticket status:', error);
       toast({
-        title: 'Failed to update ticket status.',
+        title: 'Lỗi khi cập nhật trạng thái',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -517,9 +535,14 @@ export default function TicketsManagement() {
                       </Badge>
                     </Td>
                     <Td>
-                      {ticket.assigned_user?.username || (
+                      {ticket.assigned_name ? (
+                        <Box>
+                          <Text fontWeight="medium" fontSize="sm">{ticket.assigned_name}</Text>
+                          <Text fontSize="xs" color="gray.500">{ticket.assigned_role}</Text>
+                        </Box>
+                      ) : (
                         <Text color="gray.400" fontSize="xs">
-                          Unassigned
+                          Chưa phân công
                         </Text>
                       )}
                     </Td>
@@ -539,44 +562,26 @@ export default function TicketsManagement() {
                             icon={<FiEdit />}
                             onClick={() => handleViewDetails(ticket)}
                           >
-                            View Details
+                            Xem chi tiết
                           </MenuItem>
                           <MenuItem
                             icon={<FiUserCheck />}
                             onClick={() => handleOpenAssign(ticket)}
                           >
-                            Assign
+                            Phân công
+                          </MenuItem>
+                          <MenuItem
+                            icon={<FiEdit />}
+                            onClick={() => handleOpenStatusChange(ticket)}
+                          >
+                            Đổi trạng thái
                           </MenuItem>
                           {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
-                            <>
-                              <MenuItem
-                                icon={<FiCheckCircle />}
-                                onClick={() => handleOpenResolve(ticket)}
-                              >
-                                Resolve
-                              </MenuItem>
-                              {ticket.status !== 'in_progress' && (
-                                <MenuItem
-                                  onClick={() =>
-                                    handleUpdateStatus(ticket.id, 'in_progress')
-                                  }
-                                >
-                                  Mark In Progress
-                                </MenuItem>
-                              )}
-                              <MenuItem
-                                icon={<FiX />}
-                                onClick={() => handleUpdateStatus(ticket.id, 'cancelled')}
-                              >
-                                Cancel
-                              </MenuItem>
-                            </>
-                          )}
-                          {ticket.status === 'resolved' && (
                             <MenuItem
-                              onClick={() => handleUpdateStatus(ticket.id, 'closed')}
+                              icon={<FiCheckCircle />}
+                              onClick={() => handleOpenResolve(ticket)}
                             >
-                              Close Ticket
+                              Giải quyết
                             </MenuItem>
                           )}
                         </MenuList>
@@ -635,12 +640,11 @@ export default function TicketsManagement() {
                   </Box>
                   <Box>
                     <Text fontSize="sm" color="gray.500">
-                      Assigned To
+                      Phân công cho
                     </Text>
                     <Text fontWeight="medium">
-                      {selectedTicket.assigned_user?.full_name ||
-                        selectedTicket.assigned_user?.username ||
-                        'Unassigned'}
+                      {selectedTicket.assigned_name || 'Chưa phân công'}
+                      {selectedTicket.assigned_role && ` - ${selectedTicket.assigned_role}`}
                     </Text>
                   </Box>
                   <Box>
@@ -705,34 +709,90 @@ export default function TicketsManagement() {
       <Modal isOpen={isAssignOpen} onClose={onAssignClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Assign Ticket #{selectedTicket?.id}</ModalHeader>
+          <ModalHeader>Phân công Ticket #{selectedTicket?.id}</ModalHeader>
           <ModalBody>
-            <FormControl isRequired>
-              <FormLabel>Assign To</FormLabel>
-              <Select
-                placeholder="Select user"
-                value={assignedUserId}
-                onChange={(e) => setAssignedUserId(Number(e.target.value))}
-              >
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.full_name || user.username} (ID: {user.id})
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
+            <VStack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>Tên người xử lý</FormLabel>
+                <Input
+                  placeholder="VD: Nguyễn Văn A"
+                  value={assignedName}
+                  onChange={(e) => setAssignedName(e.target.value)}
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Chức vụ / Vai trò</FormLabel>
+                <Input
+                  placeholder="VD: Thợ điện, Thợ sửa chữa, Bảo vệ"
+                  value={assignedRole}
+                  onChange={(e) => setAssignedRole(e.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Trạng thái sau khi phân công</FormLabel>
+                <Select
+                  value={assignStatus}
+                  onChange={(e) => setAssignStatus(e.target.value)}
+                >
+                  <option value="open">Mở</option>
+                  <option value="in_progress">Đang xử lý</option>
+                  <option value="assigned">Đã phân công</option>
+                </Select>
+              </FormControl>
+            </VStack>
           </ModalBody>
           <ModalFooter>
             <Button
               colorScheme="blue"
               onClick={handleAssignSubmit}
               mr={3}
-              disabled={!assignedUserId}
+              disabled={!assignedName.trim() || !assignedRole.trim()}
             >
-              Assign
+              Phân công
             </Button>
             <Button onClick={onAssignClose} variant="ghost">
-              Cancel
+              Hủy
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* --- CHANGE STATUS MODAL --- */}
+      <Modal isOpen={isStatusOpen} onClose={onStatusClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Thay đổi trạng thái Ticket #{selectedTicket?.id}</ModalHeader>
+          <ModalBody>
+            <FormControl isRequired>
+              <FormLabel>Trạng thái mới</FormLabel>
+              <Select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value)}
+              >
+                <option value="open">Mở</option>
+                <option value="assigned">Đã phân công</option>
+                <option value="in_progress">Đang xử lý</option>
+                <option value="resolved">Đã giải quyết</option>
+                <option value="closed">Đã đóng</option>
+                <option value="cancelled">Đã hủy</option>
+              </Select>
+            </FormControl>
+            <Text fontSize="sm" color="gray.600" mt={3}>
+              Trạng thái hiện tại: <Badge colorScheme={getStatusColor(selectedTicket?.status || 'open')}>
+                {selectedTicket?.status.replace('_', ' ').toUpperCase()}
+              </Badge>
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              colorScheme="purple"
+              onClick={handleStatusChangeSubmit}
+              mr={3}
+            >
+              Cập nhật
+            </Button>
+            <Button onClick={onStatusClose} variant="ghost">
+              Hủy
             </Button>
           </ModalFooter>
         </ModalContent>

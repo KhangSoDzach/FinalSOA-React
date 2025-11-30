@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Box } from '@chakra-ui/react'
 import Layout from './components/Layout/Layout'
 import Dashboard from './pages/Dashboard'
-import AdminDashboard from './pages/AdminDashboard'
 import BillsWrapper from './pages/BillsWrapper'
 import Tickets from './pages/Tickets'
 import Vehicles from './pages/Vehicles'
@@ -16,15 +15,35 @@ import UsersManagement from './pages/admin/UsersManagement'
 import VehiclesManagement from './pages/admin/VehiclesManagement'
 import TicketsManagement from './pages/admin/TicketsManagement'
 import NotificationsManagement from './pages/admin/NotificationsManagement'
+import ManagerDashboard from './pages/admin/ManagerDashboard'
+import AccountantDashboard from './pages/admin/AccountantDashboard'
+import ReceptionistDashboard from './pages/admin/ReceptionistDashboard'
+import AccountantBills from './pages/admin/AccountantBills'
+import StaffManagement from './pages/admin/StaffManagement'
+import StaffView from './pages/admin/StaffView'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { AdminRoute } from './components/AdminRoute'
+import RoleBasedRoute from './components/RoleBasedRoute'
 import { useAuth } from './contexts/AuthContext'
 
 function DashboardWrapper() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const { user, isStaff } = useAuth()
   
-  return isAdmin ? <AdminDashboard /> : <Dashboard />
+  // Staff roles get their specific dashboards
+  if (isStaff()) {
+    switch (user?.role) {
+      case 'manager':
+        return <ManagerDashboard />
+      case 'accountant':
+        return <AccountantDashboard />
+      case 'receptionist':
+        return <ReceptionistDashboard />
+      default:
+        return <Dashboard />
+    }
+  }
+  
+  // Regular users get normal dashboard
+  return <Dashboard />
 }
 
 function App() {
@@ -55,11 +74,52 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="apartments" element={<AdminRoute><ApartmentsManagement /></AdminRoute>} />
-          <Route path="users" element={<AdminRoute><UsersManagement /></AdminRoute>} />
-          <Route path="admin/vehicles" element={<AdminRoute><VehiclesManagement /></AdminRoute>} />
-          <Route path="admin/tickets" element={<AdminRoute><TicketsManagement /></AdminRoute>} />
-          <Route path="admin/notifications" element={<AdminRoute><NotificationsManagement /></AdminRoute>} />
+          
+          {/* Manager routes */}
+          <Route path="apartments" element={
+            <RoleBasedRoute allowedRoles={['manager']}>
+              <ApartmentsManagement />
+            </RoleBasedRoute>
+          } />
+          <Route path="users" element={
+            <RoleBasedRoute allowedRoles={['manager']}>
+              <UsersManagement />
+            </RoleBasedRoute>
+          } />
+          <Route path="admin/staff" element={
+            <RoleBasedRoute allowedRoles={['manager']}>
+              <StaffManagement />
+            </RoleBasedRoute>
+          } />
+          <Route path="admin/vehicles" element={
+            <RoleBasedRoute allowedRoles={['receptionist']}>
+              <VehiclesManagement />
+            </RoleBasedRoute>
+          } />
+          
+          {/* Accountant routes */}
+          <Route path="admin/bills" element={
+            <RoleBasedRoute allowedRoles={['accountant', 'manager']}>
+              <AccountantBills />
+            </RoleBasedRoute>
+          } />
+          
+          {/* Receptionist routes */}
+          <Route path="admin/staff-view" element={
+            <RoleBasedRoute allowedRoles={['receptionist']}>
+              <StaffView />
+            </RoleBasedRoute>
+          } />
+          <Route path="admin/tickets" element={
+            <RoleBasedRoute allowedRoles={['receptionist']}>
+              <TicketsManagement />
+            </RoleBasedRoute>
+          } />
+          <Route path="admin/notifications" element={
+            <RoleBasedRoute allowedRoles={['receptionist']}>
+              <NotificationsManagement />
+            </RoleBasedRoute>
+          } />
         </Route>
       </Routes>
     </Box>

@@ -273,8 +273,8 @@ export const ticketsAPI = {
     return response.data
   },
   
-  assignTicket: async (id: number, assigned_to: number) => {
-    const response = await api.post(`/tickets/${id}/assign`, { assigned_to })
+  assignTicket: async (id: number, assignData: { assigned_name: string; assigned_role: string; status?: string }) => {
+    const response = await api.post(`/tickets/${id}/assign`, assignData)
     return response.data
   },
   
@@ -353,6 +353,22 @@ export const servicesAPI = {
     const response = await api.delete(`/services/${id}`)
     return response.data
   }
+}
+
+export const apartmentsAPI = {
+  getAll: async (params?: {
+    skip?: number
+    limit?: number
+    building?: string
+    status?: string
+  }) => {
+    const response = await api.get('/apartments', { params })
+    return response.data
+  },
+  getStatistics: async () => {
+    const response = await api.get('/apartments/stats/overview')
+    return response.data
+  },
 }
 
 export const notificationsAPI = {

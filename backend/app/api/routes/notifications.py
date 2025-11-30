@@ -3,7 +3,7 @@ from sqlmodel import Session, select, func
 from typing import List, Optional
 from datetime import datetime
 from app.core.database import get_session
-from app.api.dependencies import get_current_user, get_current_admin_user
+from app.api.dependencies import get_current_user, get_current_staff
 from app.models.user import User
 from app.models.notification import Notification, NotificationRead, NotificationResponse, NotificationStatus
 from app.schemas.notification import (
@@ -67,10 +67,10 @@ async def get_all_notifications(
     limit: int = Query(100, ge=1, le=100),
     type: Optional[str] = None,
     status: Optional[NotificationStatus] = None,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),
     session: Session = Depends(get_session)
 ):
-    """Get all notifications (admin only)"""
+    """Get all notifications (staff only)"""
     statement = select(Notification)
     
     if type:
@@ -86,10 +86,10 @@ async def get_all_notifications(
 @router.post("/", response_model=NotificationResponseSchema)
 async def create_notification(
     notification_create: NotificationCreate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),
     session: Session = Depends(get_session)
 ):
-    """Create new notification (admin only)"""
+    """Create new notification (staff only - accountant and receptionist)"""
     notification_data = notification_create.dict()
     
     # If target_user_id is set, it's an individual notification
@@ -154,10 +154,10 @@ async def get_notification(
 async def update_notification(
     notification_id: int,
     notification_update: NotificationUpdate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),
     session: Session = Depends(get_session)
 ):
-    """Update notification (admin only)"""
+    """Update notification (staff only)"""
     notification = session.get(Notification, notification_id)
     if not notification:
         raise HTTPException(
@@ -259,10 +259,10 @@ async def respond_to_notification(
 @router.get("/{notification_id}/stats", response_model=NotificationStats)
 async def get_notification_stats(
     notification_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),
     session: Session = Depends(get_session)
 ):
-    """Get notification statistics (admin only)"""
+    """Get notification statistics (staff only)"""
     notification = session.get(Notification, notification_id)
     if not notification:
         raise HTTPException(
@@ -301,10 +301,10 @@ async def get_notification_stats(
 @router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),
     session: Session = Depends(get_session)
 ):
-    """Delete notification (admin only)"""
+    """Delete notification (staff only)"""
     notification = session.get(Notification, notification_id)
     if not notification:
         raise HTTPException(

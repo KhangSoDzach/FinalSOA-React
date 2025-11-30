@@ -3,7 +3,7 @@ from sqlmodel import Session, select, func
 from typing import List, Optional
 from datetime import datetime # Vẫn cần cho resolved_at
 from app.core.database import get_session
-from app.api.dependencies import get_current_user, get_current_admin_user
+from app.api.dependencies import get_current_user, get_current_receptionist
 from app.models.user import User
 
 # Chỉ import các model chính cần thiết
@@ -46,10 +46,10 @@ async def get_tickets(
     status: Optional[TicketStatus] = None,
     category: Optional[str] = None,
     assigned_to: Optional[int] = None,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_receptionist),
     session: Session = Depends(get_session)
 ):
-    """Get all tickets (admin only)"""
+    """Get all tickets (receptionist/manager only)"""
     statement = select(Ticket)
     
     if status:
@@ -126,7 +126,7 @@ async def update_ticket(
     is_user_role = getattr(current_user, 'role', None) and current_user.role.value == "user"
     
     allowed_user_fields = {'title', 'description', 'category', 'priority'}
-    allowed_admin_fields = allowed_user_fields.union({'status', 'assigned_to', 'resolution_notes'})
+    allowed_admin_fields = allowed_user_fields.union({'status', 'assigned_to', 'assigned_name', 'assigned_role', 'resolution_notes'})
     
     update_data = ticket_update.model_dump(exclude_unset=True)
     
@@ -161,30 +161,28 @@ async def update_ticket(
 async def assign_ticket(
     ticket_id: int,
     ticket_assign: TicketAssign,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_receptionist),
     session: Session = Depends(get_session)
 ):
-    """Assign ticket to user (admin only)"""
+    """Assign ticket to person by name and role (receptionist/manager only)"""
     ticket = session.get(Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     
-    assigned_user = session.get(User, ticket_assign.assigned_to)
-    if not assigned_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assigned user not found")
+    # Cập nhật thông tin người được phân công
+    ticket.assigned_name = ticket_assign.assigned_name
+    ticket.assigned_role = ticket_assign.assigned_role
     
-    old_assigned = ticket.assigned_to
+    # Cập nhật trạng thái nếu được cung cấp
+    if ticket_assign.status:
+        ticket.status = ticket_assign.status
+    elif ticket.status == TicketStatus.OPEN:
+        # Nếu không chỉ định trạng thái, tự động chuyển từ OPEN sang IN_PROGRESS
+        ticket.status = TicketStatus.IN_PROGRESS
     
-    if old_assigned != ticket_assign.assigned_to:
-        ticket.assigned_to = ticket_assign.assigned_to
-        
-        if ticket.status == TicketStatus.OPEN:
-             ticket.status = TicketStatus.ASSIGNED
-        
-        session.add(ticket)
-        session.commit()
-        
-        session.refresh(ticket)
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
     
     return ticket
 
@@ -192,10 +190,10 @@ async def assign_ticket(
 async def resolve_ticket(
     ticket_id: int,
     ticket_resolve: TicketResolve,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_receptionist),
     session: Session = Depends(get_session)
 ):
-    """Resolve ticket (admin only)"""
+    """Resolve ticket (receptionist/manager only)"""
     ticket = session.get(Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
@@ -214,10 +212,10 @@ async def resolve_ticket(
 
 @router.get("/stats/overview", response_model=TicketStats)
 async def get_ticket_stats(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_receptionist),
     session: Session = Depends(get_session)
 ):
-    """Get ticket statistics (admin only)"""
+    """Get ticket statistics (receptionist/manager only)"""
     total_tickets = session.exec(select(func.count(Ticket.id))).one()
     open_tickets = session.exec(
         select(func.count(Ticket.id)).where(Ticket.status.in_([TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS]))

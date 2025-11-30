@@ -15,22 +15,30 @@ const pageTitles: Record<string, string> = {
   '/settings': 'System Settings',
 }
 
-const adminPageTitles: Record<string, string> = {
-  '/': 'Admin Dashboard',
-  '/bills': 'Bills Management (All)',
-  '/tickets': 'Feedback Management (All)',
-  '/vehicles': 'Vehicle Management (All)',
-  '/utilities': 'Utilities Management (All)',
-  '/profile': 'Admin Profile',
+const staffPageTitles: Record<string, string> = {
+  // Manager
+  '/': 'Manager Dashboard',
+  '/apartments': 'Apartments Management',
+  '/users': 'Users Management',
+  '/admin/vehicles': 'Vehicles Management',
+  
+  // Accountant
+  '/admin/bills': 'Bills Management',
+  
+  // Receptionist
+  '/admin/tickets': 'Tickets Management',
+  '/admin/notifications': 'Notifications Management',
+  
+  // Common
+  '/profile': 'Profile Settings',
   '/settings': 'System Settings',
 }
 
 export default function Layout() {
   const location = useLocation()
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const { isStaff } = useAuth()
   
-  const titles = isAdmin ? adminPageTitles : pageTitles
+  const titles = isStaff() ? staffPageTitles : pageTitles
   const title = titles[location.pathname] || 'Dashboard'
 
   return (

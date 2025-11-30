@@ -42,7 +42,6 @@ import {
   Checkbox
 } from '@chakra-ui/react';
 import {
-  FiPlus,
   FiEdit2,
   FiTrash2,
   FiUserPlus,
@@ -103,6 +102,7 @@ interface User {
   apartment_number?: string;
   building?: string;
   occupier?: string;
+  role: string;
 }
 
 const ApartmentsManagement: React.FC = () => {
@@ -244,20 +244,20 @@ const ApartmentsManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      if (selectedApartment) {
-        await api.put(`/apartments/${selectedApartment.id}`, formData);
-        showToast('Cập nhật căn hộ thành công');
-      } else {
-        await api.post('/apartments', formData);
-        showToast('Tạo căn hộ mới thành công');
+      if (!selectedApartment) {
+        showToast('Không thể tạo căn hộ mới', 'error');
+        return;
       }
+      
+      await api.put(`/apartments/${selectedApartment.id}`, formData);
+      showToast('Cập nhật trạng thái căn hộ thành công');
       onFormClose();
       fetchApartments();
       fetchStats();
       fetchBuildings();
     } catch (error: any) {
-      console.error('Error saving apartment:', error);
-      showToast(error.response?.data?.detail || 'Lỗi khi lưu căn hộ', 'error');
+      console.error('Error updating apartment:', error);
+      showToast(error.response?.data?.detail || 'Lỗi khi cập nhật căn hộ', 'error');
     }
   };
 
@@ -340,13 +340,6 @@ const ApartmentsManagement: React.FC = () => {
             colorScheme="purple"
           >
             Làm mới
-          </Button>
-          <Button
-            leftIcon={<FiPlus />}
-            onClick={() => handleOpenForm()}
-            colorScheme="purple"
-          >
-            Thêm căn hộ
           </Button>
         </HStack>
       </Flex>
@@ -544,88 +537,53 @@ const ApartmentsManagement: React.FC = () => {
       </Box>
 
       {/* Modal thêm/sửa căn hộ */}
-      <Modal isOpen={isFormOpen} onClose={onFormClose} size="lg">
+      <Modal isOpen={isFormOpen} onClose={onFormClose} size="2xl">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            {selectedApartment ? 'Cập nhật căn hộ' : 'Thêm căn hộ mới'}
+            Chỉnh sửa trạng thái bảo trì - Căn hộ {selectedApartment?.apartment_number}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <VStack spacing={4}>
-              <FormControl isRequired>
+            <VStack spacing={4} align="stretch">
+              <FormControl>
                 <FormLabel>Số căn hộ</FormLabel>
                 <Input
                   value={formData.apartment_number}
-                  onChange={(e) => setFormData({ ...formData, apartment_number: e.target.value })}
+                  isReadOnly
+                  bg="gray.50"
                 />
               </FormControl>
-              <FormControl isRequired>
+              <FormControl>
                 <FormLabel>Tòa nhà</FormLabel>
                 <Input
                   value={formData.building}
-                  onChange={(e) => setFormData({ ...formData, building: e.target.value })}
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Tầng</FormLabel>
-                <Input
-                  type="number"
-                  value={formData.floor}
-                  onChange={(e) => setFormData({ ...formData, floor: parseInt(e.target.value) })}
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Diện tích (m²)</FormLabel>
-                <Input
-                  type="number"
-                  value={formData.area}
-                  onChange={(e) => setFormData({ ...formData, area: parseFloat(e.target.value) })}
+                  isReadOnly
+                  bg="gray.50"
                 />
               </FormControl>
               <FormControl>
-                <FormLabel>Số phòng ngủ</FormLabel>
-                <Input
-                  type="number"
-                  value={formData.bedrooms}
-                  onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) })}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Số phòng tắm</FormLabel>
-                <Input
-                  type="number"
-                  value={formData.bathrooms}
-                  onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) })}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Phí quản lý hàng tháng (VND)</FormLabel>
-                <Input
-                  type="number"
-                  value={formData.monthly_fee}
-                  onChange={(e) => setFormData({ ...formData, monthly_fee: parseFloat(e.target.value) })}
-                  placeholder="Chỉ áp dụng cho người thuê (renter)"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Mô tả</FormLabel>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
+                <FormLabel>Trạng thái hiện tại</FormLabel>
+                <Badge 
+                  colorScheme={selectedApartment?.status ? statusColors[selectedApartment.status] : 'gray'}
+                  fontSize="md"
+                  p={2}
+                >
+                  {selectedApartment?.status ? statusLabels[selectedApartment.status] : 'N/A'}
+                </Badge>
               </FormControl>
               <FormControl>
                 <Checkbox
                   isChecked={formData.is_maintenance}
                   onChange={(e) => setFormData({ ...formData, is_maintenance: e.target.checked })}
                   colorScheme="orange"
+                  size="lg"
                 >
-                  Đang bảo trì
+                  <Text fontWeight="semibold">Đánh dấu đang bảo trì</Text>
                 </Checkbox>
-                <Text fontSize="xs" color="gray.500" mt={1}>
-                  Khi chọn, căn hộ sẽ chuyển sang trạng thái bảo trì
+                <Text fontSize="sm" color="gray.600" mt={2} ml={6}>
+                  • Khi chọn: Căn hộ sẽ chuyển sang trạng thái "Bảo trì"<br/>
+                  • Khi bỏ chọn: Căn hộ sẽ quay về trạng thái ban đầu (Còn trống hoặc Đã có người)
                 </Text>
               </FormControl>
             </VStack>
@@ -635,7 +593,7 @@ const ApartmentsManagement: React.FC = () => {
               Hủy
             </Button>
             <Button colorScheme="purple" onClick={handleSubmit}>
-              {selectedApartment ? 'Cập nhật' : 'Thêm'}
+              Cập nhật trạng thái
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -659,7 +617,7 @@ const ApartmentsManagement: React.FC = () => {
                   placeholder="-- Chọn người dùng --"
                 >
                   {users
-                    .filter(user => !user.apartment_number) // Chỉ hiển thị users chưa có căn hộ
+                    .filter(user => user.role === 'user' && !user.apartment_number) // Chỉ hiển thị cư dân chưa có căn hộ
                     .map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.full_name} - {user.email}

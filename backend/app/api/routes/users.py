@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select, func
 from typing import List, Optional
 from app.core.database import get_session
-from app.api.dependencies import get_current_user, get_current_admin_user
+from app.api.dependencies import get_current_user, get_current_manager, get_current_staff
 from app.models.user import User, OccupierType, UserRole
 from app.schemas.user import UserResponse, UserUpdate, UserCreate, PasswordChange, BalanceUpdate, BalanceResponse
 from app.core.security import get_password_hash, verify_password
@@ -76,7 +76,7 @@ async def change_password(
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_create: UserCreate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Create new user (admin only)"""
@@ -120,10 +120,10 @@ async def get_users(
     building: Optional[str] = None,
     role: Optional[str] = None,
     only_residents: bool = Query(False),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),  # Changed to allow all staff
     session: Session = Depends(get_session)
 ):
-    """Get list of users (admin only)"""
+    """Get list of users (staff only - read access for accountant/receptionist, full access for manager)"""
     statement = select(User)
     
     if building:
@@ -141,7 +141,7 @@ async def get_users(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_staff),  # Changed to allow all staff
     session: Session = Depends(get_session)
 ):
     """Get user by ID (admin only)"""
@@ -157,7 +157,7 @@ async def get_user(
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Update user (admin only)"""
@@ -182,7 +182,7 @@ async def update_user(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Delete user (admin only)"""
@@ -206,7 +206,7 @@ async def delete_user(
 
 @router.get("/stats/overview")
 async def get_users_stats(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Get users statistics (admin only)"""
@@ -296,7 +296,7 @@ async def top_up_balance(
 async def admin_update_user_balance(
     user_id: int,
     balance_data: BalanceUpdate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Update user balance (admin only) - can add or subtract"""

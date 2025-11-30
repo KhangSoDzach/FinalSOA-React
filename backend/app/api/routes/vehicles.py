@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.core.database import get_session
-from app.api.dependencies import get_current_user, get_current_admin_user
+from app.api.dependencies import get_current_user, get_current_receptionist
 from app.models.vehicle import Vehicle, VehicleStatus, VehicleType
 from app.models.user import User
 from app.schemas.vehicle import (
@@ -145,7 +145,7 @@ def get_all_vehicles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_receptionist)
 ):
     """Admin lấy danh sách tất cả xe với filter"""
     query = select(Vehicle, User).join(User, Vehicle.user_id == User.id)
@@ -193,7 +193,7 @@ def get_all_vehicles(
 @router.get("/admin/stats", response_model=VehicleStats)
 def get_vehicle_stats(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_receptionist)
 ):
     """Admin lấy thống kê xe"""
     total = session.exec(select(func.count(Vehicle.id))).one()
@@ -236,7 +236,7 @@ def approve_or_reject_vehicle(
     vehicle_id: int,
     approval_data: VehicleApproval,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_receptionist)
 ):
     """Admin approve hoặc reject xe"""
     vehicle = session.get(Vehicle, vehicle_id)
@@ -273,7 +273,7 @@ def update_parking_spot(
     vehicle_id: int,
     parking_spot: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_receptionist)
 ):
     """Admin cập nhật parking spot"""
     vehicle = session.get(Vehicle, vehicle_id)

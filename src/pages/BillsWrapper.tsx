@@ -1,12 +1,11 @@
 import { useAuth } from '../contexts/AuthContext'
-import AdminBills from './AdminBills'
+import AccountantBills from './admin/AccountantBills'
 import Bills from './Bills'
 
 const BillsWrapper = () => {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const { user, isAccountant } = useAuth()
   
-  return isAdmin ? <AdminBills /> : <Bills />
+  return isAccountant() ? <AccountantBills /> : <Bills />
 }
 
 export default BillsWrapper

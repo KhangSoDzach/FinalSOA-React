@@ -49,10 +49,46 @@ async def get_current_user(
     return user
 
 def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
-    """Get current user and verify admin role"""
-    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+    """Deprecated: Use get_current_manager instead. Manager has full admin access."""
+    if current_user.role != UserRole.MANAGER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+            detail="Manager role required"
+        )
+    return current_user
+
+def get_current_manager(current_user: User = Depends(get_current_user)) -> User:
+    """Get current user and verify manager role (Quản lý) - Full system access"""
+    if current_user.role != UserRole.MANAGER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager role required"
+        )
+    return current_user
+
+def get_current_accountant(current_user: User = Depends(get_current_user)) -> User:
+    """Get current user and verify accountant role (Kế toán) - Manager can also access"""
+    if current_user.role not in [UserRole.MANAGER, UserRole.ACCOUNTANT]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accountant role required"
+        )
+    return current_user
+
+def get_current_receptionist(current_user: User = Depends(get_current_user)) -> User:
+    """Get current user and verify receptionist role (Lễ tân) - Manager can also access"""
+    if current_user.role not in [UserRole.MANAGER, UserRole.RECEPTIONIST]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Receptionist role required"
+        )
+    return current_user
+
+def get_current_staff(current_user: User = Depends(get_current_user)) -> User:
+    """Get current user and verify any staff role (Manager, Accountant, or Receptionist)"""
+    if current_user.role not in [UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff role required"
         )
     return current_user

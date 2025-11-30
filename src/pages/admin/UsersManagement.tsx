@@ -68,7 +68,6 @@ interface NewUser {
   password: string;
   full_name: string;
   phone: string;
-  role: string;
 }
 
 const UsersManagement: React.FC = () => {
@@ -82,7 +81,6 @@ const UsersManagement: React.FC = () => {
     password: '',
     full_name: '',
     phone: '',
-    role: 'user',
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,8 +142,10 @@ const UsersManagement: React.FC = () => {
     try {
       setLoading(true);
       const data = await usersAPI.getAll();
-      setUsers(data);
-      setFilteredUsers(data);
+      // Filter to show only regular users (role = 'user')
+      const regularUsers = data.filter((user: User) => user.role === 'user');
+      setUsers(regularUsers);
+      setFilteredUsers(regularUsers);
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -188,7 +188,7 @@ const UsersManagement: React.FC = () => {
         email: newUser.email,
         password: newUser.password,
         full_name: newUser.full_name,
-        role: newUser.role,
+        role: 'user', // Mặc định là cư dân
       };
 
       // Add optional fields if provided
@@ -211,7 +211,6 @@ const UsersManagement: React.FC = () => {
         password: '',
         full_name: '',
         phone: '',
-        role: 'user',
       });
 
       fetchUsers();
@@ -295,12 +294,14 @@ const UsersManagement: React.FC = () => {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'admin':
-        return 'red';
       case 'manager':
         return 'purple';
-      default:
+      case 'accountant':
+        return 'green';
+      case 'receptionist':
         return 'blue';
+      default:
+        return 'gray';
     }
   };
 
@@ -499,10 +500,12 @@ const UsersManagement: React.FC = () => {
                         </Td>
                         <Td>
                           <Badge colorScheme={getRoleBadgeColor(user.role)}>
-                            {user.role === 'admin'
-                              ? 'Admin'
-                              : user.role === 'manager'
+                            {user.role === 'manager'
                               ? 'Quản lý'
+                              : user.role === 'accountant'
+                              ? 'Kế toán'
+                              : user.role === 'receptionist'
+                              ? 'Lễ tân'
                               : 'Cư dân'}
                           </Badge>
                         </Td>
@@ -646,10 +649,12 @@ const UsersManagement: React.FC = () => {
                       Vai trò
                     </Text>
                     <Badge colorScheme={getRoleBadgeColor(selectedUser.role)}>
-                      {selectedUser.role === 'admin'
-                        ? 'Admin'
-                        : selectedUser.role === 'manager'
+                      {selectedUser.role === 'manager'
                         ? 'Quản lý'
+                        : selectedUser.role === 'accountant'
+                        ? 'Kế toán'
+                        : selectedUser.role === 'receptionist'
+                        ? 'Lễ tân'
                         : 'Cư dân'}
                     </Badge>
                   </Box>
@@ -838,20 +843,6 @@ const UsersManagement: React.FC = () => {
                 />
               </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel>Vai trò</FormLabel>
-                <Select
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, role: e.target.value })
-                  }
-                >
-                  <option value="user">Cư dân</option>
-                  <option value="manager">Quản lý</option>
-                  <option value="admin">Admin</option>
-                </Select>
-              </FormControl>
-
               <Alert status="info" borderRadius="md">
                 <AlertIcon />
                 <Box>
@@ -861,6 +852,9 @@ const UsersManagement: React.FC = () => {
                   </Text>
                   <Text fontSize="sm">
                     - Mật khẩu mặc định có thể thay đổi sau khi tạo
+                  </Text>
+                  <Text fontSize="sm">
+                    - Người dùng mới sẽ có vai trò là Cư dân
                   </Text>
                   <Text fontSize="sm">
                     - Người dùng mới sẽ được kích hoạt ngay lập tức

@@ -22,6 +22,12 @@ interface AuthContextType {
   refreshUser: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
+  isAdmin: () => boolean
+  isManager: () => boolean
+  isAccountant: () => boolean
+  isReceptionist: () => boolean
+  isStaff: () => boolean
+  hasRole: (roles: string[]) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -97,6 +103,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!token && !!user
 
+  // Role checking functions
+  const isAdmin = () => user?.role === 'admin' // Deprecated - kept for compatibility
+  const isManager = () => user?.role === 'manager'
+  const isAccountant = () => user?.role === 'accountant'
+  const isReceptionist = () => user?.role === 'receptionist'
+  const isStaff = () => {
+    const staffRoles = ['manager', 'accountant', 'receptionist']
+    return user ? staffRoles.includes(user.role) : false
+  }
+  const hasRole = (roles: string[]) => user ? roles.includes(user.role) : false
+
   const value: AuthContextType = {
     user,
     token,
@@ -105,6 +122,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
     isLoading,
     isAuthenticated,
+    isAdmin,
+    isManager,
+    isAccountant,
+    isReceptionist,
+    isStaff,
+    hasRole,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

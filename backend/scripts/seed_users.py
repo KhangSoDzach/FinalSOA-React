@@ -19,37 +19,39 @@ def create_sample_users():
     """Create sample users with different roles and buildings"""
     
     sample_users = [
-        # Admin users
+        # Manager (Quản lý) - Full system access
         {
-            "username": "admin",
-            "email": "admin@skyhome.com",
-            "full_name": "Quản trị viên hệ thống",
-            "phone": "0901234567",
-            "role": UserRole.ADMIN,
+            "username": "manager",
+            "email": "manager@skyhome.com",
+            "full_name": "Nguyễn Văn Quản Lý",
+            "phone": "0902345678",
+            "role": UserRole.MANAGER,
             "apartment_number": None,
             "building": None,
             "is_active": True
         },
         
-        # Manager users
+        # Accountant (Kế toán)
         {
-            "username": "manager_a",
-            "email": "manager.a@skyhome.com",
-            "full_name": "Nguyễn Văn Quản",
-            "phone": "0902345678",
-            "role": UserRole.MANAGER,
+            "username": "accountant",
+            "email": "accountant@skyhome.com",
+            "full_name": "Trần Thị Kế Toán",
+            "phone": "0903456789",
+            "role": UserRole.ACCOUNTANT,
             "apartment_number": None,
-            "building": "A",
+            "building": None,
             "is_active": True
         },
+        
+        # Receptionist (Lễ tân)
         {
-            "username": "manager_b",
-            "email": "manager.b@skyhome.com",
-            "full_name": "Trần Thị Lý",
-            "phone": "0903456789",
-            "role": UserRole.MANAGER,
+            "username": "receptionist",
+            "email": "receptionist@skyhome.com",
+            "full_name": "Lê Thị Lễ Tân",
+            "phone": "0904567890",
+            "role": UserRole.RECEPTIONIST,
             "apartment_number": None,
-            "building": "B",
+            "building": None,
             "is_active": True
         },
         
@@ -247,13 +249,13 @@ def create_sample_users():
                 continue
             
             # Tạo số dư ngẫu nhiên cho users
-            balance = Decimal("0.00")  # Default cho admin/manager
+            balance = Decimal("0.00")  # Default cho admin/manager/staff
             
             if user_data["role"] == UserRole.USER:
                 # User thường có số dư từ 500k đến 5 triệu
                 balance = Decimal(str(random.randint(500000, 5000000)))
-            elif user_data["role"] == UserRole.MANAGER:
-                # Manager có số dư từ 1 triệu đến 3 triệu
+            elif user_data["role"] in [UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST]:
+                # Staff có số dư từ 1 triệu đến 3 triệu
                 balance = Decimal(str(random.randint(1000000, 3000000)))
             else:
                 # Admin có số dư 10 triệu
@@ -272,8 +274,9 @@ def create_sample_users():
         session.commit()
         print(f"\n🎉 Successfully created {created_count} users!")
         print("\n📋 Summary:")
-        print(f"   - Admin: {len([u for u in sample_users if u['role'] == UserRole.ADMIN])}")
-        print(f"   - Manager: {len([u for u in sample_users if u['role'] == UserRole.MANAGER])}")
+        print(f"   - Manager (Quản lý): {len([u for u in sample_users if u['role'] == UserRole.MANAGER])}")
+        print(f"   - Accountant (Kế toán): {len([u for u in sample_users if u['role'] == UserRole.ACCOUNTANT])}")
+        print(f"   - Receptionist (Lễ tân): {len([u for u in sample_users if u['role'] == UserRole.RECEPTIONIST])}")
         print(f"   - User: {len([u for u in sample_users if u['role'] == UserRole.USER])}")
         print(f"   - Building A: {len([u for u in sample_users if u['building'] == 'A'])}")
         print(f"   - Building B: {len([u for u in sample_users if u['building'] == 'B'])}")

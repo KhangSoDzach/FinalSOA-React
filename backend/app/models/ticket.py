@@ -39,12 +39,14 @@ class Ticket(SQLModel, table=True):
     priority: TicketPriority = Field(default=TicketPriority.NORMAL)
     status: TicketStatus = Field(default=TicketStatus.OPEN)
 
-    # Assignment
-    assigned_to: Optional[int] = Field(foreign_key="user.id")
+    # Assignment - Changed to text fields instead of user reference
+    assigned_to: Optional[int] = Field(default=None, foreign_key="user.id")  # Keep for backward compatibility
+    assigned_name: Optional[str] = None  # Tên người được phân công
+    assigned_role: Optional[str] = None  # Chức vụ (Ví dụ: Thợ điện, Thợ sửa chữa)
     
     # Resolution
     resolved_at: Optional[datetime] = None
-    resolved_by: Optional[int] = Field(foreign_key="user.id")
+    resolved_by: Optional[int] = Field(default=None, foreign_key="user.id")
     resolution_notes: Optional[str] = None
     
 

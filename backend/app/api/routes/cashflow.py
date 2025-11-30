@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid
 import os
 from app.core.database import get_session
-from app.api.dependencies import get_current_user, get_current_admin_user
+from app.api.dependencies import get_current_user, get_current_accountant
 from app.models.user import User
 from app.models.cashflow import CashFlow, BankStatement, CashFlowType
 from app.schemas.cashflow import (
@@ -23,10 +23,10 @@ async def get_cash_flows(
     type: Optional[CashFlowType] = None,
     account_type: Optional[str] = None,
     reconciled: Optional[bool] = None,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Get cash flow records (admin only)"""
+    """Get cash flow records (accountant/manager only)"""
     statement = select(CashFlow)
     
     if type:
@@ -44,10 +44,10 @@ async def get_cash_flows(
 @router.post("/", response_model=CashFlowResponse)
 async def create_cash_flow(
     cash_flow_create: CashFlowCreate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Create new cash flow record (admin only)"""
+    """Create new cash flow record (accountant/manager only)"""
     # Generate unique transaction number
     transaction_number = f"CF-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
     
@@ -66,10 +66,10 @@ async def create_cash_flow(
 @router.get("/{cash_flow_id}", response_model=CashFlowResponse)
 async def get_cash_flow(
     cash_flow_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Get cash flow by ID (admin only)"""
+    """Get cash flow by ID (accountant/manager only)"""
     cash_flow = session.get(CashFlow, cash_flow_id)
     if not cash_flow:
         raise HTTPException(
@@ -82,10 +82,10 @@ async def get_cash_flow(
 async def update_cash_flow(
     cash_flow_id: int,
     cash_flow_update: CashFlowUpdate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Update cash flow record (admin only)"""
+    """Update cash flow record (accountant/manager only)"""
     cash_flow = session.get(CashFlow, cash_flow_id)
     if not cash_flow:
         raise HTTPException(
@@ -108,10 +108,10 @@ async def update_cash_flow(
 async def upload_evidence(
     cash_flow_id: int,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Upload evidence for cash flow record (admin only)"""
+    """Upload evidence for cash flow record (accountant/manager only)"""
     cash_flow = session.get(CashFlow, cash_flow_id)
     if not cash_flow:
         raise HTTPException(
@@ -142,10 +142,10 @@ async def upload_evidence(
 @router.post("/reconcile")
 async def reconcile_cash_flows(
     reconcile_request: ReconcileRequest,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Reconcile cash flow records (admin only)"""
+    """Reconcile cash flow records (accountant/manager only)"""
     cash_flows = session.exec(
         select(CashFlow).where(CashFlow.id.in_(reconcile_request.cash_flow_ids))
     ).all()
@@ -184,10 +184,10 @@ async def get_my_receipts(
 async def upload_bank_statement(
     bank_statement: BankStatementCreate,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Upload bank statement (admin only)"""
+    """Upload bank statement (accountant/manager only)"""
     # Create upload directory if it doesn't exist
     upload_dir = settings.upload_dir
     os.makedirs(upload_dir, exist_ok=True)
@@ -219,10 +219,10 @@ async def get_bank_statements(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     bank_account: Optional[str] = None,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Get bank statements (admin only)"""
+    """Get bank statements (accountant/manager only)"""
     statement = select(BankStatement)
     
     if bank_account:

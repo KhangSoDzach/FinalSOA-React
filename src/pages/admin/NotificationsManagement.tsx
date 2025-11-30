@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Button,
@@ -67,11 +67,11 @@ interface User {
 export default function NotificationsManagement() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
-  const cancelRef = useState(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
   const toast = useToast()
   const { token } = useAuth()
 
@@ -501,7 +501,7 @@ export default function NotificationsManagement() {
       {/* Delete Confirmation */}
       <AlertDialog
         isOpen={deleteId !== null}
-        leastDestructiveRef={cancelRef.current}
+        leastDestructiveRef={cancelRef}
         onClose={() => setDeleteId(null)}
       >
         <AlertDialogOverlay>
@@ -511,7 +511,7 @@ export default function NotificationsManagement() {
               Bạn có chắc chắn muốn xóa thông báo này không?
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef.current} onClick={() => setDeleteId(null)}>
+              <Button ref={cancelRef} onClick={() => setDeleteId(null)}>
                 Hủy
               </Button>
               <Button colorScheme="red" onClick={() => deleteId && handleDelete(deleteId)} ml={3}>

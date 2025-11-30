@@ -4,7 +4,7 @@ from typing import List, Optional
 import secrets
 import string
 from app.core.database import get_session
-from app.api.dependencies import get_current_admin_user
+from app.api.dependencies import get_current_manager
 from app.models.apartment import Apartment, ApartmentStatus
 from app.models.user import User, UserRole
 from app.schemas.apartment import (
@@ -31,7 +31,7 @@ async def get_apartments(
     limit: int = Query(100, ge=1, le=100),
     building: Optional[str] = None,
     status: Optional[ApartmentStatus] = None,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Lấy danh sách căn hộ (admin only)"""
@@ -67,7 +67,7 @@ async def get_apartments(
 @router.post("/", response_model=ApartmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_apartment(
     apartment: ApartmentCreate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Tạo căn hộ mới (admin only)"""
@@ -92,7 +92,7 @@ async def create_apartment(
 @router.get("/{apartment_id}", response_model=ApartmentWithResident)
 async def get_apartment(
     apartment_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Lấy thông tin căn hộ (admin only)"""
@@ -121,7 +121,7 @@ async def get_apartment(
 async def update_apartment(
     apartment_id: int,
     apartment_update: ApartmentUpdate,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Cập nhật thông tin căn hộ (admin only)"""
@@ -161,7 +161,7 @@ async def update_apartment(
 @router.delete("/{apartment_id}")
 async def delete_apartment(
     apartment_id: int,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Xóa căn hộ (admin only)"""
@@ -187,7 +187,7 @@ async def delete_apartment(
 async def register_resident(
     apartment_id: int,
     user_data: ApartmentRegisterUser,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Đăng ký cư dân mới cho căn hộ (admin only)
@@ -283,7 +283,7 @@ async def register_resident(
 async def assign_user_to_apartment(
     apartment_id: int,
     assign_data: ApartmentAssignUser,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Gán user có sẵn vào căn hộ với phân loại owner/renter (admin only)
@@ -368,7 +368,7 @@ async def assign_user_to_apartment(
 async def remove_resident(
     apartment_id: int,
     delete_user: bool = Query(False, description="Xóa luôn tài khoản user"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Xóa cư dân khỏi căn hộ (admin only)"""
@@ -418,7 +418,7 @@ async def remove_resident(
 
 @router.get("/buildings/list")
 async def get_buildings(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Lấy danh sách các tòa nhà"""
@@ -430,7 +430,7 @@ async def get_buildings(
 
 @router.get("/stats/overview")
 async def get_apartment_stats(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_manager),
     session: Session = Depends(get_session)
 ):
     """Thống kê tổng quan căn hộ"""

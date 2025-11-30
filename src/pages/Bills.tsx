@@ -198,16 +198,27 @@ export default function Bills() {
         }
       }
 
+      // Map backend data (snake_case) to frontend format (camelCase)
       const formattedPending: Bill[] = pending.map((b: any) => ({
-        ...b,
         id: Number(b.id),
+        title: b.title,
+        type: b.bill_type || b.type,
+        amount: Number(b.amount),
+        dueDate: b.due_date || b.dueDate,
+        status: b.status.toLowerCase(),
+        description: b.description || '',
       }));
       setUnpaidBills(formattedPending);
 
       const paid = await billsAPI.getMyBills('paid');
       const formattedPaid: Bill[] = paid.map((b: any) => ({
-        ...b,
         id: Number(b.id),
+        title: b.title,
+        type: b.bill_type || b.type,
+        amount: Number(b.amount),
+        dueDate: b.due_date || b.dueDate,
+        status: b.status.toLowerCase(),
+        description: b.description || '',
       }));
       setPaidBills(formattedPaid);
 

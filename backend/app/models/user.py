@@ -12,8 +12,9 @@ if TYPE_CHECKING:
 
 class UserRole(str, Enum):
     USER = "user"
-    ADMIN = "admin"
-    MANAGER = "manager"
+    MANAGER = "manager"         # Quản lý - Full access
+    ACCOUNTANT = "accountant"   # Kế toán - Bills & Finance
+    RECEPTIONIST = "receptionist"  # Lễ tân - Services & Support
 
 class OccupierType(str, Enum):
     OWNER = "owner"

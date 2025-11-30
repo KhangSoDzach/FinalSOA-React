@@ -10,39 +10,53 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.core.config import settings
 from app.models.user import User, UserRole, OccupierType
 from app.models.bill import Bill, BillType, BillStatus
-# THÊM: Import ServiceBooking và BookingStatus
 from app.models.service import Service, ServiceCategory, ServiceStatus, ServiceBooking, BookingStatus
 from app.models.notification import Notification, NotificationType, NotificationStatus
-from app.core.security import get_password_hash
 from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
+from app.models.apartment import Apartment, ApartmentStatus
+from app.models.vehicle import Vehicle, VehicleType, VehicleStatus
+from app.core.security import get_password_hash
 
 
 engine = create_engine(str(settings.database_url))
 
 def create_users():
     users = [
-        User(
-            username="admin",
-            email="admin@apartment.com",
-            hashed_password=get_password_hash("admin123"),
-            full_name="Quản trị viên",
-            role=UserRole.ADMIN,
-            is_active=True,
-            balance=Decimal("0.00"),  
-            created_at=datetime.now(),
-            occupier=OccupierType.OWNER
-        ),
+        # Staff accounts
         User(
             username="manager",
             email="manager@apartment.com",
-            hashed_password=get_password_hash("manager123"),
-            full_name="Người quản lý",
+            hashed_password=get_password_hash("123456"),
+            full_name="Nguyễn Văn Quản Lý",
             role=UserRole.MANAGER,
             is_active=True,
-            balance=Decimal("0.00"),  
+            balance=Decimal("2000000.00"),  
             created_at=datetime.now(),
             occupier=OccupierType.OWNER
         ),
+        User(
+            username="accountant",
+            email="accountant@apartment.com",
+            hashed_password=get_password_hash("123456"),
+            full_name="Trần Thị Kế Toán",
+            role=UserRole.ACCOUNTANT,
+            is_active=True,
+            balance=Decimal("2500000.00"),  
+            created_at=datetime.now(),
+            occupier=OccupierType.OWNER
+        ),
+        User(
+            username="receptionist",
+            email="receptionist@apartment.com",
+            hashed_password=get_password_hash("123456"),
+            full_name="Lê Thị Lễ Tân",
+            role=UserRole.RECEPTIONIST,
+            is_active=True,
+            balance=Decimal("1800000.00"),  
+            created_at=datetime.now(),
+            occupier=OccupierType.OWNER
+        ),
+        # Regular user accounts
         User(
             username="user001",
             email="vamila2710@gmail.com",
@@ -60,11 +74,11 @@ def create_users():
         User(
             username="user002",
             email="lexa61313@gmail.com",
-            hashed_password=get_password_hash("user123"),
+            hashed_password=get_password_hash("123456"),
             full_name="Trần Thị B", 
             phone="0901234568",
             role=UserRole.USER,
-            apartment_number="B202",
+            apartment_number="B101",
             building="B",
             is_active=True,
             balance=Decimal("5000000.00"),  
@@ -74,12 +88,12 @@ def create_users():
         User(
         username="user003",
         email="user003@apartment.com",
-        hashed_password=get_password_hash("user123"),
+        hashed_password=get_password_hash("123456"),
         full_name="Lê Văn C", 
         phone="0901234569",
         role=UserRole.USER,
-        apartment_number="C301",
-        building="C",
+        apartment_number="A202",
+        building="A",
         is_active=True,
         balance=Decimal("1250000.00"), 
         created_at=datetime.now(),
@@ -88,11 +102,11 @@ def create_users():
         User(
             username="user004",
             email="user004@apartment.com",
-            hashed_password=get_password_hash("user123"),
+            hashed_password=get_password_hash("123456"),
             full_name="Phạm Thị D", 
             phone="0901234570",
             role=UserRole.USER,
-            apartment_number="A402",
+            apartment_number="A305",
             building="A",
             is_active=True,
             balance=Decimal("0.00"), 
@@ -102,11 +116,11 @@ def create_users():
         User(
             username="user005",
             email="user005@apartment.com",
-            hashed_password=get_password_hash("user123"),
+            hashed_password=get_password_hash("123456"),
             full_name="Hoàng Đình E", 
             phone="0901234571",
             role=UserRole.USER,
-            apartment_number="B105",
+            apartment_number="B203",
             building="B",
             is_active=True,
             balance=Decimal("7800000.00"), 
@@ -116,12 +130,12 @@ def create_users():
         User(
             username="user006",
             email="user006@apartment.com",
-            hashed_password=get_password_hash("user123"),
+            hashed_password=get_password_hash("123456"),
             full_name="Võ Văn F", 
             phone="0901234572",
             role=UserRole.USER,
-            apartment_number="C503",
-            building="C",
+            apartment_number="B404",
+            building="B",
             is_active=False,  
             balance=Decimal("300000.00"), 
             created_at=datetime.now(),
@@ -360,58 +374,224 @@ def create_notifications(users):
     ]
     return notifications
 
+def create_apartments():
+    """Create apartments for 2 buildings (A, B), 5 floors each, 5 rooms per floor"""
+    apartments = []
+    
+    # Tòa A và B
+    buildings = ["A", "B"]
+    floors = 5  # 5 lầu
+    rooms_per_floor = 5  # 5 phòng mỗi lầu
+    
+    # Định nghĩa các loại căn hộ
+    apartment_types = [
+        {"area": 55.0, "bedrooms": 1, "bathrooms": 1, "base_fee": 1800000},  # Studio
+        {"area": 65.0, "bedrooms": 2, "bathrooms": 1, "base_fee": 2300000},  # 2PN
+        {"area": 75.0, "bedrooms": 2, "bathrooms": 2, "base_fee": 2800000},  # 2PN + 2WC
+        {"area": 85.0, "bedrooms": 3, "bathrooms": 2, "base_fee": 3200000},  # 3PN
+        {"area": 100.0, "bedrooms": 3, "bathrooms": 3, "base_fee": 3800000}, # 3PN cao cấp
+    ]
+    
+    for building in buildings:
+        for floor in range(1, floors + 1):
+            for room in range(1, rooms_per_floor + 1):
+                # Số phòng: A101, A102, ..., A105, A201, ...
+                apartment_number = f"{building}{floor}0{room}"
+                
+                # Chọn loại căn hộ (xoay vòng)
+                apt_type = apartment_types[(room - 1) % len(apartment_types)]
+                
+                # Phí tăng theo tầng (100k mỗi tầng)
+                monthly_fee = apt_type["base_fee"] + (floor - 1) * 100000
+                
+                # Mặc định tất cả đều AVAILABLE
+                status = ApartmentStatus.AVAILABLE
+                description = None
+                
+                # Đặc biệt một vài căn có người ở (để test)
+                special_occupied = ["A101", "A202", "A305", "B101", "B203", "B404"]
+                if apartment_number in special_occupied:
+                    status = ApartmentStatus.OCCUPIED
+                    if room == 1:
+                        description = "Căn góc, view đẹp"
+                
+                apartment = Apartment(
+                    apartment_number=apartment_number,
+                    building=building,
+                    floor=floor,
+                    area=apt_type["area"],
+                    bedrooms=apt_type["bedrooms"],
+                    bathrooms=apt_type["bathrooms"],
+                    monthly_fee=monthly_fee,
+                    status=status,
+                    description=description
+                )
+                apartments.append(apartment)
+    
+    return apartments
+
+def create_vehicles(user_id, manager_id):
+    """Create sample vehicles for testing"""
+    vehicles = [
+        Vehicle(
+            user_id=user_id,
+            license_plate="30A-123.45",
+            make="Toyota",
+            model="Camry",
+            color="Trắng",
+            vehicle_type=VehicleType.CAR,
+            status=VehicleStatus.ACTIVE,
+            parking_spot="P1-23",
+            registered_at=datetime.utcnow() - timedelta(days=180),
+            expires_at=datetime.utcnow() + timedelta(days=185),
+            approved_at=datetime.utcnow() - timedelta(days=175),
+            approved_by=manager_id,
+        ),
+        Vehicle(
+            user_id=user_id,
+            license_plate="29X-999.88",
+            make="Honda",
+            model="SH Mode",
+            color="Đỏ mận",
+            vehicle_type=VehicleType.MOTORCYCLE,
+            status=VehicleStatus.PENDING,
+            registered_at=datetime.utcnow() - timedelta(days=2),
+            expires_at=datetime.utcnow() + timedelta(days=363),
+        ),
+        Vehicle(
+            user_id=user_id,
+            license_plate="30F-555.66",
+            make="VinFast",
+            model="VF e34",
+            color="Xanh lam",
+            vehicle_type=VehicleType.CAR,
+            status=VehicleStatus.REJECTED,
+            rejection_reason="Hình ảnh biển số mờ, vui lòng chụp lại rõ nét.",
+            registered_at=datetime.utcnow() - timedelta(days=5),
+        ),
+    ]
+    return vehicles
+
 def main():
-    print("🌱 Seeding database with initial data...")
+    print("🌱 Seeding database with complete data...")
+    print("=" * 60)
     
     with Session(engine) as session:
         
-        print("👥 Creating users...")
+        # 1. CREATE USERS
+        print("\n👥 Creating users...")
         users = create_users()
         for user in users:
             session.add(user)
         session.commit()
-        session.refresh(users[0])
-        session.refresh(users[1])
-        session.refresh(users[2])
-        session.refresh(users[3])
-        print(f"✅ Created {len(users)} users")
-
         
-        print("🔧 Creating services and bookings...")
-        # SỬA: Gọi hàm tạo Service & Booking thay vì create_services()
+        # Refresh to get IDs
+        for i in range(len(users)):
+            session.refresh(users[i])
+        print(f"✅ Created {len(users)} users")
+        print(f"   - Staff: {len([u for u in users if u.role in [UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.RECEPTIONIST]])}")
+        print(f"   - Residents: {len([u for u in users if u.role == UserRole.USER])}")
+
+        # 2. CREATE APARTMENTS
+        print("\n🏢 Creating apartments...")
+        apartments = create_apartments()
+        for apt in apartments:
+            session.add(apt)
+        session.commit()
+        
+        # Refresh apartments to get IDs
+        for apt in apartments:
+            session.refresh(apt)
+        
+        # Link apartments to users
+        apartment_user_map = {
+            "A101": users[3],  # user001
+            "A202": users[5],  # user003
+            "A305": users[6],  # user004
+            "B101": users[4],  # user002
+            "B203": users[7],  # user005
+            "B404": users[8],  # user006
+        }
+        
+        for apt_number, user in apartment_user_map.items():
+            apt = next((a for a in apartments if a.apartment_number == apt_number), None)
+            if apt:
+                apt.resident_id = user.id
+                session.add(apt)
+        
+        session.commit()
+        print(f"✅ Created {len(apartments)} apartments")
+        print(f"   - Occupied: {len([a for a in apartments if a.status == ApartmentStatus.OCCUPIED])}")
+        print(f"   - Available: {len([a for a in apartments if a.status == ApartmentStatus.AVAILABLE])}")
+        
+        # 3. CREATE SERVICES & BOOKINGS
+        print("\n🔧 Creating services and bookings...")
         create_services_and_bookings(users, session)
 
-        
-        print("💳 Creating bills...")
+        # 4. CREATE BILLS
+        print("\n💳 Creating bills...")
         bills = create_bills(users)
         for bill in bills:
             session.add(bill)
         session.commit()
         print(f"✅ Created {len(bills)} bills")
+        print(f"   - Pending: {len([b for b in bills if b.status == BillStatus.PENDING])}")
+        print(f"   - Paid: {len([b for b in bills if b.status == BillStatus.PAID])}")
 
-        
-        print("📢 Creating notifications...")
+        # 5. CREATE NOTIFICATIONS
+        print("\n📢 Creating notifications...")
         notifications = create_notifications(users)
         for notification in notifications:
             session.add(notification)
         session.commit()
         print(f"✅ Created {len(notifications)} notifications")
 
-        
-        print("🎫 Creating tickets...")
+        # 6. CREATE TICKETS
+        print("\n🎫 Creating tickets...")
         tickets = create_tickets(users)
         for ticket in tickets:
             session.add(ticket)
         session.commit()
         print(f"✅ Created {len(tickets)} tickets")
+        print(f"   - Open: {len([t for t in tickets if t.status == TicketStatus.OPEN])}")
+        print(f"   - In Progress: {len([t for t in tickets if t.status == TicketStatus.IN_PROGRESS])}")
+        print(f"   - Resolved: {len([t for t in tickets if t.status == TicketStatus.RESOLVED])}")
+        print(f"   - Closed: {len([t for t in tickets if t.status == TicketStatus.CLOSED])}")
 
+        # 7. CREATE VEHICLES
+        print("\n🚗 Creating vehicles...")
+        vehicles = create_vehicles(users[3].id, users[0].id)  # user001's vehicles, approved by manager
+        for vehicle in vehicles:
+            session.add(vehicle)
+        session.commit()
+        print(f"✅ Created {len(vehicles)} vehicles")
+        print(f"   - Active: {len([v for v in vehicles if v.status == VehicleStatus.ACTIVE])}")
+        print(f"   - Pending: {len([v for v in vehicles if v.status == VehicleStatus.PENDING])}")
+        print(f"   - Rejected: {len([v for v in vehicles if v.status == VehicleStatus.REJECTED])}")
 
-    print("\n🎉 Database seeding completed!")
-    print("\nTest accounts:")
-    print("Admin: admin / admin123")
-    print("Manager: manager / manager123") 
-    print("User 1: user001 / 123123 (Căn hộ A101)")
-    print("User 2: user002 / user123 (Căn hộ B202)")
+    print("\n" + "=" * 60)
+    print("🎉 Database seeding completed successfully!")
+    print("=" * 60)
+    print("\n📋 Test Accounts:")
+    print("-" * 60)
+    print("STAFF ACCOUNTS:")
+    print("  Manager (Quản lý):     manager / 123456")
+    print("  Accountant (Kế toán):  accountant / 123456") 
+    print("  Receptionist (Lễ tân): receptionist / 123456")
+    print("\nRESIDENT ACCOUNTS:")
+    print("  User 1: user001 / 123456   (Căn hộ A101, Owner)")
+    print("  User 2: user002 / 123456   (Căn hộ B101, Owner)")
+    print("  User 3: user003 / 123456   (Căn hộ A202, Owner)")
+    print("  User 4: user004 / 123456   (Căn hộ A305, Renter)")
+    print("  User 5: user005 / 123456   (Căn hộ B203, Owner)")
+    print("  User 6: user006 / 123456   (Căn hộ B404, Renter - Inactive)")
+    print("-" * 60)
+    print("\n💡 Tips:")
+    print("  - Login as manager to access all management features")
+    print("  - Login as accountant to manage bills and finances")
+    print("  - Login as receptionist to manage vehicles, tickets, notifications")
+    print("  - Login as user001 to test resident features (bills, vehicles, tickets)")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()

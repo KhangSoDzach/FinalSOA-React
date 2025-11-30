@@ -4,10 +4,11 @@ from sqlmodel import Session, select, func, or_, delete
 from typing import List, Optional
 from datetime import datetime, timedelta
 from app.core.database import get_session
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_current_accountant
 from app.models.user import User, UserRole, OccupierType
 from app.models.bill import Bill, Payment, BillStatus, PaymentStatus, BillType
 from app.models.apartment import Apartment
+from app.models.notification import Notification, NotificationType, NotificationStatus
 from app.schemas.bill import BillResponse, PaymentResponse, PaymentRequest, OTPVerify, PaymentRequestResponse, BillCreate, BillUpdate
 from decimal import Decimal
 import secrets
@@ -45,15 +46,10 @@ async def get_all_bills(
     user_id: Optional[int] = None,
     status: Optional[BillStatus] = None,
     building: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Get all bills (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can access all bills"
-        )
+    """Get all bills (accountant/manager only)"""
     
     statement = select(Bill)
     
@@ -73,15 +69,10 @@ async def get_all_bills(
 @router.post("/", response_model=BillResponse)
 async def create_bill(
     bill_data: BillCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Create a new bill (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can create bills"
-        )
+    """Create a new bill (accountant/manager only)"""
     
     # Check if user exists
     user = session.get(User, bill_data.user_id)
@@ -112,15 +103,10 @@ async def create_bill(
 @router.post("/batch-create", response_model=List[BillResponse])
 async def batch_create_bills(
     bills_data: List[BillCreate],
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Create multiple bills at once (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can create bills"
-        )
+    """Create multiple bills at once (accountant/manager only)"""
     
     created_bills = []
     
@@ -160,15 +146,10 @@ async def batch_create_bills(
 async def update_bill(
     bill_id: int,
     bill_data: BillUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Update a bill (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can update bills"
-        )
+    """Update a bill (accountant/manager only)"""
     
     bill = session.get(Bill, bill_id)
     if not bill:
@@ -195,15 +176,10 @@ async def update_bill(
 @router.delete("/{bill_id}")
 async def delete_bill(
     bill_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Delete a bill (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can delete bills"
-        )
+    """Delete a bill (accountant/manager only)"""
     
     bill = session.get(Bill, bill_id)
     if not bill:
@@ -222,15 +198,10 @@ async def delete_bill(
 async def get_bills_statistics(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Get bills statistics (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can access statistics"
-        )
+    """Get bills statistics (accountant/manager only)"""
     
     statement = select(Bill)
     
@@ -269,16 +240,11 @@ async def get_bills_statistics(
     }
 
 @router.put("/mark-overdue")
-async def mark_overdue_bills(
-    current_user: User = Depends(get_current_user),
+def mark_overdue_bills(
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Mark all pending bills past due date as overdue (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can mark bills as overdue"
-        )
+    """Mark all pending bills past due date as overdue (accountant/manager only)"""
     
     # Find all pending bills past due date
     statement = select(Bill).where(
@@ -289,29 +255,26 @@ async def mark_overdue_bills(
     bills = session.exec(statement).all()
     
     # Update status to overdue
+    updated_count = 0
     for bill in bills:
         bill.status = BillStatus.OVERDUE
         session.add(bill)
+        updated_count += 1
     
     session.commit()
     
     return {
-        "message": f"Marked {len(bills)} bills as overdue",
-        "updated_count": len(bills)
+        "message": f"Đã đánh dấu {updated_count} hóa đơn quá hạn",
+        "updated_count": updated_count
     }
 
 @router.post("/send-reminder")
 async def send_payment_reminders(
     bill_ids: Optional[List[int]] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Send payment reminders for pending/overdue bills (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can send reminders"
-        )
+    """Send payment reminders for pending/overdue bills (accountant/manager only)"""
     
     # Build query
     statement = select(Bill).where(
@@ -323,12 +286,38 @@ async def send_payment_reminders(
     
     bills = session.exec(statement).all()
     
-    # TODO: Implement notification sending logic
-    # For now, just return count
-    notifications_sent = len(bills)
+    # Create notification for each bill
+    notifications_sent = 0
+    for bill in bills:
+        # Get user info
+        user = session.get(User, bill.user_id)
+        if not user:
+            continue
+            
+        # Create notification
+        notification = Notification(
+            title=f"Nhắc nhở thanh toán: {bill.title}",
+            content=f"Kính gửi {user.full_name},\n\nĐây là thông báo nhắc nhở về hóa đơn #{bill.bill_number} sắp đến hạn thanh toán.\n\n"
+                   f"Thông tin hóa đơn:\n"
+                   f"- Tiêu đề: {bill.title}\n"
+                   f"- Số tiền: {bill.amount:,.0f} ₫\n"
+                   f"- Hạn thanh toán: {bill.due_date.strftime('%d/%m/%Y')}\n"
+                   f"- Trạng thái: {'Quá hạn' if bill.status == BillStatus.OVERDUE else 'Chưa thanh toán'}\n\n"
+                   f"Vui lòng thanh toán trước hạn để tránh phát sinh phí phạt.\n\nTrân trọng,\nBan quản lý",
+            type=NotificationType.BILL_REMINDER,
+            priority=3 if bill.status == BillStatus.OVERDUE else 2,
+            target_user_id=bill.user_id,
+            status=NotificationStatus.SENT,
+            sent_at=datetime.utcnow(),
+            created_by=current_user.id
+        )
+        session.add(notification)
+        notifications_sent += 1
+    
+    session.commit()
     
     return {
-        "message": f"Sent {notifications_sent} reminders",
+        "message": f"Đã gửi {notifications_sent} thông báo nhắc nhở",
         "notifications_sent": notifications_sent
     }
 
@@ -338,15 +327,10 @@ async def export_bills_report(
     end_date: Optional[str] = None,
     status_filter: Optional[str] = None,
     bill_type_filter: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Export bills report as CSV (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can export reports"
-        )
+    """Export bills report as CSV (accountant/manager only)"""
     
     statement = select(Bill)
     
@@ -405,8 +389,9 @@ async def get_bill_payments(
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
     
-    # Check permission
-    if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
+    # Check permission: accountant/manager or bill owner
+    is_staff = current_user.role in [UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT]
+    if not is_staff and bill.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this bill's payments"
@@ -618,15 +603,10 @@ async def resend_otp(
 async def generate_monthly_fees(
     month: Optional[int] = None,
     year: Optional[int] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Generate monthly apartment fees for all renters (admin only)"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can generate monthly fees"
-        )
+    """Generate monthly apartment fees for all renters (accountant/manager only)"""
     
     # Use current month and year if not provided
     now = datetime.utcnow()
