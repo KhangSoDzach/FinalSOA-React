@@ -13,12 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 # Sử dụng os.getenv để lấy cấu hình từ môi trường/tệp .env
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com") 
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
-EMAIL_USER = os.getenv("EMAIL_USER", "hoangminhvan2710@gmail.com")
-EMAIL_PASS = os.getenv("EMAIL_PASS", "pxvt xkqd bhwl qkyc") # App Password (Mật khẩu Ứng dụng)
+EMAIL_USER = os.getenv("EMAIL_USER", "lexa61313@gmail.com")
+EMAIL_PASS = os.getenv("EMAIL_PASS", "amey auhm cgwn cnkl") # App Password (Mật khẩu Ứng dụng)
 EMAIL_SENDER_NAME = "SkyHome Apartment Management"
 
 # Kiểm tra nhanh để cảnh báo nếu đang dùng thông tin mặc định
-if "example.com" in EMAIL_HOST or EMAIL_USER == "hoangminhvan2710@gmail.com":
+if "example.com" in EMAIL_HOST or EMAIL_USER == "lexa61313@gmail.com":
     print("⚠️ CẢNH BÁO: Đang sử dụng cấu hình email mặc định hoặc cứng. Vui lòng kiểm tra file .env!")
 
 def generate_otp(length: int = 6) -> str:
