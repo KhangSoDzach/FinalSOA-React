@@ -425,9 +425,6 @@ export default function Bills() {
                             Đến hạn: {new Date(bill.dueDate).toLocaleDateString('vi-VN')}
                           </Text>
                           <HStack spacing="2">
-                            <Button size="sm" variant="outline" leftIcon={<FiDownload />}>
-                              Tải xuống
-                            </Button>
                             <Button
                               size="sm"
                               colorScheme="brand"
@@ -484,9 +481,6 @@ export default function Bills() {
                           <Text fontSize="sm" color="gray.500">
                             Thanh toán: {new Date(bill.dueDate).toLocaleDateString('vi-VN')}
                           </Text>
-                          <Button size="sm" variant="outline" leftIcon={<FiDownload />}>
-                            Tải biên lai
-                          </Button>
                         </VStack>
                       </Flex>
                     </CardBody>

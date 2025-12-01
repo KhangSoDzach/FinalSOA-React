@@ -389,7 +389,6 @@ async def get_bill_payments(
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
     
-    # Check permission: accountant/manager or bill owner
     is_staff = current_user.role in [UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT]
     if not is_staff and bill.user_id != current_user.id:
         raise HTTPException(
@@ -402,9 +401,7 @@ async def get_bill_payments(
     
     return payments
 
-# ============================================
-# USER ENDPOINTS
-# ============================================
+
 
 
 @router.get("/my-bills", response_model=List[BillResponse])
@@ -413,16 +410,15 @@ async def get_my_bills(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """Get bills for the current user"""
     statement = select(Bill).where(Bill.user_id == current_user.id)
     if status:
         statement = statement.where(Bill.status == status)
     
-    # Sắp xếp theo due_date giảm dần (bill mới nhất trước)
     statement = statement.order_by(Bill.due_date.desc())
     
     bills = session.exec(statement).all()
     
-    # SỬA LỖI 422: Loại bỏ logic ép kiểu lỗi
     return bills
 
 @router.post("/request-pay", response_model=PaymentRequestResponse)
@@ -431,6 +427,7 @@ async def request_payment(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    """Request payment for a bill (generate and send OTP)"""
     bill = session.get(Bill, request_data.bill_id)
     
     if not bill:
@@ -444,7 +441,6 @@ async def request_payment(
     if not current_user.email:
         raise HTTPException(status_code=400, detail="Tài khoản không có email để gửi OTP")
 
-    # XÓA: Xóa các giao dịch cũ đang ở trạng thái PENDING hoặc OTP_EXPIRED
     delete_statement = delete(Payment).where(
         Payment.bill_id == bill.id,
         or_(
@@ -456,7 +452,6 @@ async def request_payment(
     session.commit()
 
     otp_code = generate_otp()
-    # Dùng biến cục bộ này để gửi cho frontend, không lưu vào DB
     otp_expiry_dt = datetime.utcnow() + timedelta(minutes=5) 
 
     payment = Payment(
@@ -467,13 +462,11 @@ async def request_payment(
         message="Chờ xác minh OTP",
         payment_date=datetime.utcnow(),
         otp=otp_code,
-        # ĐÃ XÓA: otp_expires_at
     )
     session.add(payment)
     session.commit()
     session.refresh(payment)
 
-    # THỰC HIỆN GỬI EMAIL THỰC TẾ
     try:
         await send_otp_email(current_user.email, otp_code, bill.id)
     except HTTPException as e:
@@ -488,33 +481,13 @@ async def request_payment(
         otp_valid_until=otp_expiry_dt,
     )
 
-# @router.get("/{bill_id}", response_model=BillResponse)
-# async def get_bill_by_id(
-#     bill_id: int,
-#     current_user: User = Depends(get_current_user),
-#     session: Session = Depends(get_session)
-# ):
-#     """Get bill by ID"""
-#     bill = session.get(Bill, bill_id)
-#     if not bill:
-#         raise HTTPException(status_code=404, detail="Bill not found")
-    
-#     # Check permission: admin or owner
-#     if current_user.role != UserRole.ADMIN and bill.user_id != current_user.id:
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="Not authorized to access this bill"
-#         )
-    
-#     return bill
 @router.post("/verify-otp", response_model=PaymentResponse)
 async def verify_otp_and_pay(
     verify_data: OTPVerify,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    
-    # 1. Tìm bản ghi Payment và khóa nó
+    """Verify OTP and complete payment for a bill"""
     payment_statement = select(Payment).where(
         Payment.id == verify_data.payment_id,
         Payment.user_id == current_user.id
@@ -524,7 +497,6 @@ async def verify_otp_and_pay(
     if not payment:
         raise HTTPException(status_code=404, detail="Giao dịch thanh toán không tồn tại")
 
-    # 2. Kiểm tra trạng thái giao dịch
     if payment.status != PaymentStatus.PENDING:
         if payment.status == PaymentStatus.COMPLETED:
             raise HTTPException(status_code=400, detail="Giao dịch đã hoàn tất trước đó")
@@ -532,13 +504,10 @@ async def verify_otp_and_pay(
              raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn. Vui lòng gửi lại yêu cầu.")
         raise HTTPException(status_code=400, detail=f"Trạng thái giao dịch không hợp lệ: {payment.status}")
 
-    # 3. KIỂM TRA OTP HẾT HẠN - Logic này đã được chuyển sang frontend
     
-    # 4. Kiểm tra mã OTP
     if payment.otp != verify_data.otp:
         raise HTTPException(status_code=400, detail="Mã OTP không hợp lệ")
 
-    # 5. Xác minh hóa đơn và user balance
     bill = session.get(Bill, payment.bill_id)
     
     user_statement = select(User).where(User.id == current_user.id)
@@ -550,14 +519,12 @@ async def verify_otp_and_pay(
         session.commit()
         raise HTTPException(status_code=400, detail="Lỗi: Số dư không đủ hoặc tài khoản người dùng không hợp lệ.")
 
-    # 6. Thực hiện giao dịch: Trừ số dư và cập nhật Bill
     user_to_update.balance -= payment.amount
     bill.status = BillStatus.PAID
     bill.paid_at = datetime.utcnow()
     
-    # 7. Cập nhật Payment
     payment.status = PaymentStatus.COMPLETED
-    payment.message = "Thanh toán thành công qua OTP"
+    payment.message = "Thanh toán thành công "
     payment.otp = None 
     payment.payment_date = datetime.utcnow()
 
@@ -576,6 +543,7 @@ async def resend_otp(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    """Resend OTP for payment request"""
     bill = session.get(Bill, request_data.bill_id)
     
     if not bill or bill.user_id != current_user.id:
@@ -583,7 +551,6 @@ async def resend_otp(
     if not current_user.email:
         raise HTTPException(status_code=400, detail="Tài khoản không có email để gửi OTP")
 
-    # Tìm giao dịch OTP gần nhất
     payment_statement = select(Payment).where(
         Payment.bill_id == bill.id,
         Payment.user_id == current_user.id
@@ -592,7 +559,6 @@ async def resend_otp(
     payment = session.exec(payment_statement).first()
 
     if payment and payment.status == PaymentStatus.PENDING:
-        # ĐẶT TRẠNG THÁI CŨ LÀ OTP_EXPIRED
         payment.status = PaymentStatus.OTP_EXPIRED
         session.add(payment)
         session.commit()

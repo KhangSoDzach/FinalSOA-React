@@ -200,10 +200,9 @@ def create_tickets(users):
     
 # HÀM MỚI: Tạo Service và Booking cùng lúc
 def create_services_and_bookings(users, session):
-    # 1. Tạo Services
     services = [
         Service(
-            name="Dọn dẹp căn hộ",
+            name="Dọn dẹp căn hộ (Tiêu chuẩn)",
             description="Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.",
             category=ServiceCategory.CLEANING,
             price=Decimal("150000"),
@@ -214,14 +213,105 @@ def create_services_and_bookings(users, session):
             created_at=datetime.now()
         ),
         Service(
+            name="Vệ sinh Sofa & Thảm",
+            description="Giặt sofa nỉ/da, giặt thảm phòng khách bằng máy chuyên dụng.",
+            category=ServiceCategory.CLEANING,
+            price=Decimal("450000"),
+            unit="bộ",
+            status=ServiceStatus.ACTIVE,
+            available_days="[5,6]", 
+            provider_name="Sofa Sạch",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Diệt côn trùng",
+            description="Phun thuốc diệt muỗi, gián, kiến an toàn sinh học.",
+            category=ServiceCategory.CLEANING,
+            price=Decimal("600000"),
+            unit="lần",
+            status=ServiceStatus.ACTIVE,
+            available_days="[1,3,5]",
+            provider_name="PestBuster",
+            created_at=datetime.now()
+        ),
+
+        Service(
             name="Sửa chữa điện lạnh",
-            description="Bảo dưỡng máy lạnh, sửa tủ lạnh, máy giặt.",
+            description="Bảo dưỡng máy lạnh, bơm ga, sửa tủ lạnh, máy giặt.",
             category=ServiceCategory.REPAIR,
             price=Decimal("250000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5]",
             provider_name="Điện Lạnh 24h",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Sửa chữa Điện & Nước",
+            description="Xử lý rò rỉ nước, thay bóng đèn, sửa ổ cắm, thông tắc cống.",
+            category=ServiceCategory.REPAIR,
+            price=Decimal("200000"),
+            unit="lần",
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="Thợ Sài Gòn",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Dịch vụ Thợ khóa",
+            description="Mở khóa cửa, thay khóa từ, sửa khóa két sắt.",
+            category=ServiceCategory.CLEANING,
+            price=Decimal("150000"),
+            unit="lần",
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="KeyMaster",
+            created_at=datetime.now()
+        ),
+
+        Service(
+            name="Giao nước uống (19L)",
+            description="Đổi nước bình 19L (Lavie/Vĩnh Hảo) tận căn hộ.",
+            category=ServiceCategory.DELIVERY, 
+            price=Decimal("650000"),
+            unit="bình",
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="Đại lý Nước Xanh",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Giặt ủi giao nhận tận nơi",
+            description="Giặt sấy, gấp gọn. Giá tính theo kg. Giao nhận trong 24h.",
+            category=ServiceCategory.CLEANING, 
+            price=Decimal("25000"),
+            unit="kg",
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="Giặt Là 365",
+            created_at=datetime.now()
+        ),
+
+        Service(
+            name="Thuê khu vực BBQ",
+            description="Đặt chỗ khu nướng BBQ sân thượng (Bao gồm lò nướng + than).",
+            category=ServiceCategory.OTHER, 
+            price=Decimal("300000"),
+            unit="giờ",
+            status=ServiceStatus.ACTIVE,
+            available_days="[4,5,6]", 
+            provider_name="Ban Quản Lý",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Chăm sóc thú cưng (Pet Sitting)",
+            description="Trông giữ chó mèo, dắt chó đi dạo trong khuôn viên.",
+            category=ServiceCategory.OTHER, 
+            price=Decimal("100000"),
+            unit="giờ",
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="PetLove",
             created_at=datetime.now()
         )
     ]
