@@ -1,15 +1,9 @@
 import {
   Box,
-  Grid,
   Card,
   CardBody,
   Text,
-  Button,
   SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
   Icon,
   VStack,
 } from '@chakra-ui/react'
@@ -18,11 +12,8 @@ import {
   FiMessageSquare, 
   FiTruck, 
   FiTool,
-  FiDollarSign,
-  FiAlertCircle
 } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
 
 const quickAccessItems = [
   {
@@ -57,7 +48,6 @@ const quickAccessItems = [
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user } = useAuth()
 
   return (
     <Box>
@@ -142,78 +132,6 @@ export default function Dashboard() {
           </SimpleGrid>
         </CardBody>
       </Card>
-
-      {/* Overview Stats */}
-      <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap="6" mb="8">
-        {/* <Card>
-          <CardBody>
-            <Text fontSize="xl" fontWeight="semibold" mb="6">
-              Financial Overview
-            </Text>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing="6">
-              <Stat>
-                <StatLabel>Outstanding Bills</StatLabel>
-                <StatNumber color="red.500">4,500,000 VND</StatNumber>
-                <StatHelpText>
-                  <Icon as={FiAlertCircle} mr="1" />
-                  Due: Oct 30, 2025
-                </StatHelpText>
-              </Stat>
-              <Stat>
-                <StatLabel>This Month Paid</StatLabel>
-                <StatNumber color="green.500">2,200,000 VND</StatNumber>
-                <StatHelpText>
-                  <Icon as={FiDollarSign} mr="1" />
-                  3 bills paid
-                </StatHelpText>
-              </Stat>
-            </SimpleGrid>
-            <Button
-              colorScheme="brand"
-              size="lg"
-              leftIcon={<FiFileText />}
-              mt="6"
-              onClick={() => navigate('/bills')}
-            >
-              View All Bills
-            </Button>
-          </CardBody>
-        </Card> */}
-
-        {/* <Card>
-          <CardBody>
-            <Text fontSize="xl" fontWeight="semibold" mb="6">
-              Recent Activity
-            </Text>
-            <VStack spacing="4" align="stretch">
-              <Box p="3" bg="blue.50" borderRadius="md">
-                <Text fontSize="sm" fontWeight="medium">
-                  Electricity Bill Generated
-                </Text>
-                <Text fontSize="xs" color="gray.600">
-                  2 hours ago
-                </Text>
-              </Box>
-              <Box p="3" bg="green.50" borderRadius="md">
-                <Text fontSize="sm" fontWeight="medium">
-                  Service Request Completed
-                </Text>
-                <Text fontSize="xs" color="gray.600">
-                  1 day ago
-                </Text>
-              </Box>
-              <Box p="3" bg="orange.50" borderRadius="md">
-                <Text fontSize="sm" fontWeight="medium">
-                  New Announcement
-                </Text>
-                <Text fontSize="xs" color="gray.600">
-                  3 days ago
-                </Text>
-              </Box>
-            </VStack>
-          </CardBody>
-        </Card> */}
-      </Grid>
 
       {/* Announcements */}
       {/* <Card>

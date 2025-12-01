@@ -23,15 +23,12 @@ import {
   Input,
   Select,
   useToast,
-  Image,
   Spinner,
   Center
 } from '@chakra-ui/react'
 import { 
   FiPlus, 
   FiCheckCircle,
-  FiXCircle,
-  FiEdit,
   FiTrash,
   FiAlertCircle
 } from 'react-icons/fi'

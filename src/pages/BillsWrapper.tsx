@@ -3,7 +3,7 @@ import AccountantBills from './admin/AccountantBills'
 import Bills from './Bills'
 
 const BillsWrapper = () => {
-  const { user, isAccountant } = useAuth()
+  const { isAccountant } = useAuth()
   
   return isAccountant() ? <AccountantBills /> : <Bills />
 }

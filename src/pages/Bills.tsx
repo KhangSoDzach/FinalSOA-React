@@ -4,7 +4,6 @@ import {
   CardBody,
   Text,
   Button,
-  SimpleGrid,
   Badge,
   HStack,
   VStack,
@@ -23,24 +22,19 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
-  Divider,
   FormControl,
   FormLabel,
   Input,
   useToast,
-  Link,
 } from '@chakra-ui/react';
 import { 
   FiCreditCard, 
-  FiDownload, 
-  FiCalendar,
   FiCheckCircle,
   FiMail,
 } from 'react-icons/fi';
 import { useEffect, useState, useRef } from 'react';
 import { billsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../services/api';
 
 // Interface linh hoạt chấp nhận cả trạng thái cũ và mới
 interface Bill {
