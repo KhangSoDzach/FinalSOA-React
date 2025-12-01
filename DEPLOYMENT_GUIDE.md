@@ -136,7 +136,7 @@ SMTP_FROM_NAME=Apartment Management System
 VITE_API_URL=/api/v1
 
 # Vercel flag
-    =1
+    VERCEL=1
 ```
 
 **⚠️ LƯU Ý:**
@@ -180,56 +180,6 @@ curl https://your-app.vercel.app/api/v1/
 ## 🔧 BƯỚC 6: Troubleshooting
 
 ### Lỗi thường gặp:
-
-#### 0. **Trang web trắng sau khi deploy (Blank White Page)**
-```
-- Trang chỉ hiển thị màu trắng
-- Console không có lỗi hoặc có lỗi "Failed to fetch"
-```
-**Nguyên nhân**: 
-- `vercel.json` dùng cấu hình `builds` cũ (deprecated)
-- Missing base path trong Vite config
-- API URL không được cấu hình đúng
-
-**Fix**: 
-1. Xóa file `vercel.json` cũ và tạo mới:
-```json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
-}
-```
-
-2. Update `vite.config.ts`:
-```typescript
-export default defineConfig({
-  plugins: [react()],
-  base: '/',
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    chunkSizeWarningLimit: 1000
-  }
-})
-```
-
-3. Trong Vercel Dashboard → Settings → Environment Variables:
-```
-VITE_API_URL=https://your-backend-url.com/api/v1
-```
-
-4. Redeploy:
-- Vào Vercel Dashboard
-- Click "Redeploy" trên deployment mới nhất
-- Hoặc push code mới lên GitHub
 
 #### 1. **500 Internal Server Error**
 ```bash
