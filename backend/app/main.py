@@ -12,17 +12,20 @@ app = FastAPI(
 )
 
 # Configure CORS
+import re
+
+def check_origin(origin: str) -> bool:
+    """Check if origin is allowed"""
+    allowed_patterns = [
+        r"^https://.*\.vercel\.app$",  # All Vercel deployments
+        r"^http://localhost:\d+$",      # Local development
+        r"^http://127\.0\.0\.1:\d+$",   # Local development
+    ]
+    return any(re.match(pattern, origin) for pattern in allowed_patterns)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "https://*.vercel.app",  # Allow all Vercel preview deployments
-    ],
+    allow_origin_regex=r"^https://.*\.vercel\.app$|^http://(localhost|127\.0\.0\.1):\d+$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
