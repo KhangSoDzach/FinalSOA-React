@@ -20,7 +20,8 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174"
+        "http://127.0.0.1:5174",
+        "https://*.vercel.app",  # Allow all Vercel preview deployments
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -29,9 +30,11 @@ app.add_middleware(
     max_age=3600,
 )
 
-# Mount static files for images
-images_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Images")
-app.mount("/images", StaticFiles(directory=images_path), name="images")
+# Mount static files for images (only for local development)
+if not os.getenv("VERCEL"):
+    images_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Images")
+    if os.path.exists(images_path):
+        app.mount("/images", StaticFiles(directory=images_path), name="images")
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
@@ -43,6 +46,13 @@ async def startup_event():
 @app.get("/")
 async def root():
     return {"message": "Apartment Management API is running"}
+
+# Vercel serverless handler
+try:
+    from mangum import Mangum
+    handler = Mangum(app)
+except ImportError:
+    handler = None
 
 if __name__ == "__main__":
     import uvicorn
