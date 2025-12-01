@@ -120,7 +120,7 @@ Click **Environment Variables**, thêm:
 DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 
 # JWT Security
-SECRET_KEY=your-super-secret-key-at-least-32-characters-long
+SECRET_KEY=Z6hrphTsxZDc5xlY70bRGiIcN4xjdJHLnGNXqNhLfhQ
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
