@@ -55,6 +55,21 @@ function backendServerPlugin() {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), backendServerPlugin()],
+  base: '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chakra-vendor': ['@chakra-ui/react', '@emotion/react', '@emotion/styled'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',
