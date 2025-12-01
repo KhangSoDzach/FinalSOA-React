@@ -1,6 +1,5 @@
 from .user import User, UserRole, OccupierType
 from .bill import Bill, Payment, BillStatus, BillType, PaymentStatus
-from .cashflow import CashFlow, BankStatement, CashFlowType, CashFlowCategory
 from .notification import Notification, NotificationRead, NotificationResponse, NotificationType, NotificationStatus, ResponseType
 from .ticket import Ticket, TicketStatus, TicketPriority, TicketCategory
 from .service import Service, ServiceBooking, ServiceStatus, ServiceCategory, BookingStatus
@@ -10,7 +9,6 @@ from .vehicle import Vehicle, VehicleType, VehicleStatus
 __all__ = [
     "User", "UserRole", "OccupierType", 
     "Bill", "Payment", "BillStatus", "BillType", "PaymentStatus",
-    "CashFlow", "BankStatement", "CashFlowType", "CashFlowCategory",
     "Notification", "NotificationRead", "NotificationResponse", "NotificationType", "NotificationStatus", "ResponseType",
     "Ticket", "TicketStatus", "TicketPriority", "TicketCategory",
     "Service", "ServiceBooking", "ServiceStatus", "ServiceCategory", "BookingStatus",

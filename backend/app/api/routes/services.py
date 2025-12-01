@@ -225,6 +225,7 @@ async def get_all_bookings_admin(
     limit: int = Query(100, ge=1, le=100),
     status: Optional[BookingStatus] = None,
     service_id: Optional[int] = None,
+    user_id: Optional[int] = None,
     current_user: User = Depends(get_current_receptionist),
     session: Session = Depends(get_session)
 ):
@@ -235,6 +236,8 @@ async def get_all_bookings_admin(
         statement = statement.where(ServiceBooking.status == status)
     if service_id:
         statement = statement.where(ServiceBooking.service_id == service_id)
+    if user_id:
+        statement = statement.where(ServiceBooking.user_id == user_id)
     
     statement = statement.offset(skip).limit(limit).order_by(ServiceBooking.created_at.desc())
     bookings = session.exec(statement).all()

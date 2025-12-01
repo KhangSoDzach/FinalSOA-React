@@ -27,6 +27,71 @@ def generate_otp(length: int = 6) -> str:
     """
     return "".join(secrets.choice(string.digits) for _ in range(length))
 
+async def send_reset_password_email(to_email: str, full_name: str, otp: str):
+    """
+    Gửi mã OTP để reset mật khẩu qua email
+    """
+    subject = "Đặt lại mật khẩu - SkyHome Apartment"
+    
+    html_content = f"""
+        <div style="font-family: Arial, sans-serif; padding:20px; border: 1px solid #ddd; border-radius: 8px; max-width: 600px;">
+            <h2 style="color:#2563eb;">Đặt lại mật khẩu</h2>
+            <p>Xin chào <strong>{full_name}</strong>,</p>
+            <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+            <p>Mã OTP để đặt lại mật khẩu của bạn là:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <h1 style="letter-spacing:8px; color:#2563eb; background-color: #eff6ff; padding: 20px; display: inline-block; border-radius: 8px; border: 2px solid #2563eb;">{otp}</h1>
+            </div>
+            <p><strong>Lưu ý quan trọng:</strong></p>
+            <ul style="line-height: 1.8;">
+                <li>Mã này có hiệu lực trong <strong>10 phút</strong></li>
+                <li>Không chia sẻ mã này với bất kỳ ai</li>
+                <li>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này</li>
+            </ul>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="font-size: 12px; color: gray;">
+                Email này được gửi tự động từ hệ thống SkyHome Apartment Management.<br>
+                Vui lòng không trả lời email này.
+            </p>
+        </div>
+    """
+    
+    msg = MIMEMultipart('alternative')
+    msg['From'] = f'"{EMAIL_SENDER_NAME}" <{EMAIL_USER}>'
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    try:
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server.ehlo()
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.sendmail(EMAIL_USER, to_email, msg.as_string())
+        server.quit()
+        print(f"📧 [SMTP] Password reset OTP sent successfully to {to_email}")
+    except smtplib.SMTPAuthenticationError:
+        error_detail = "Lỗi xác thực SMTP. Vui lòng kiểm tra cấu hình email."
+        print(f"❌ [SMTP] Lỗi xác thực: {error_detail}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+    except Exception as e:
+        if "getaddrinfo failed" in str(e):
+            error_detail = f"Lỗi kết nối máy chủ ({EMAIL_HOST})."
+        elif "timed out" in str(e):
+            error_detail = f"Kết nối bị hết thời gian chờ."
+        else:
+            error_detail = f"Lỗi không xác định khi gửi email: {e}"
+            
+        print(f"❌ [SMTP] Error sending reset password email to {to_email}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Không thể gửi email đặt lại mật khẩu. {error_detail}"
+        )
+
 async def send_otp_email_async(to_email: str, otp: str, bill_id: int):
     """
     Gửi mã OTP qua email sử dụng cấu hình SMTP.

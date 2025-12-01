@@ -43,6 +43,7 @@ const receptionistItems = [
   { name: 'Dashboard', icon: FiHome, path: '/' },
   { name: 'Staff', icon: FiUsers, path: '/admin/staff-view' },
   { name: 'Vehicles', icon: FiTruck, path: '/admin/vehicles' },
+  { name: 'Services', icon: FiTool, path: '/admin/services' },
   { name: 'Tickets', icon: FiMessageSquare, path: '/admin/tickets' },
   { name: 'Notifications', icon: FiBell, path: '/admin/notifications' },
 ]

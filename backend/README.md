@@ -5,24 +5,28 @@ FastAPI backend cho hệ thống quản lý chung cư với các tính năng:
 ## Tính năng chính
 
 ### 1. Quản lý hóa đơn và thanh toán
-- **User**: Xem/tải hóa đơn, thanh toán online/upload chứng từ, xem lịch sử
+- **User**: Xem/tải hóa đơn, thanh toán online với OTP qua email, xem lịch sử
 - **Admin**: Tạo/điều chỉnh hóa đơn, xác thực thanh toán, gửi nhắc nợ, xuất báo cáo thu
 
-### 2. Sổ quỹ (tiền mặt/ngân hàng)
-- **User**: Xem biên lai/lịch sử khoản nộp của căn hộ
-- **Admin**: Ghi thu/chi, đính kèm chứng từ, đối chiếu sao kê, xuất báo cáo
+### 2. Thông báo & tin tức
+- **Admin**: Nhận/đọc thông báo, đăng ký nhận nhóm thông báo, xác nhận/tham dự
+- **Admin**: Tạo/lên lịch/đẩy thông báo, phân target, xem thống kê
 
-### 3. Thông báo & tin tức
-- **User**: Nhận/đọc thông báo, đăng ký nhận nhóm thông báo, xác nhận/tham dự
-- **Admin**: Tạo/lên lịch/đẩy thông báo (push/SMS), phân target, xem thống kê
-
-### 4. Phản ánh/khiếu nại/góp ý (tickets)
+### 3. Phản ánh/khiếu nại/góp ý (tickets)
 - **User**: Tạo ticket (ảnh, vị trí), theo dõi trạng thái, đánh giá khi đóng
 - **Admin**: Nhận & phân công, cập nhật trạng thái/log, đóng nghiệm thu, báo KPI
 
-### 5. Quản lý dịch vụ đặt
+### 4. Quản lý dịch vụ đặt
 - **User**: Xem dịch vụ, đặt/hủy, xem lịch & đánh giá
 - **Admin**: Quản lý dịch vụ/giá, confirm & giao provider, đối soát thanh toán
+
+### 5. Quản lý phương tiện (xe)
+- **User**: Đăng ký xe, xem thẻ xe, cập nhật thông tin
+- **Admin**: Duyệt/từ chối đăng ký xe, quản lý thẻ xe, xem thống kê
+
+### 6. Quản lý căn hộ & cư dân
+- **User**: Xem thông tin căn hộ của mình
+- **Admin**: Quản lý căn hộ, gán cư dân vào căn hộ, xem thống kê
 
 ## Tech Stack
 
@@ -102,14 +106,11 @@ backend/
 
 ### Bills & Payments
 - `GET /api/v1/bills/my-bills` - Hóa đơn của user
-- `POST /api/v1/bills/{bill_id}/payments` - Tạo thanh toán
-- `POST /api/v1/bills/{bill_id}/upload-evidence` - Upload chứng từ thanh toán
-- `PUT /api/v1/bills/payments/{payment_id}/confirm` - Xác nhận thanh toán (admin)
-
-### Cash Flow
-- `GET /api/v1/cashflow/` - Sổ quỹ (admin)
-- `POST /api/v1/cashflow/` - Ghi thu/chi (admin)
-- `POST /api/v1/cashflow/reconcile` - Đối chiếu (admin)
+- `POST /api/v1/bills/request-pay` - Yêu cầu thanh toán (gửi OTP)
+- `POST /api/v1/bills/verify-otp` - Xác thực OTP và thanh toán
+- `POST /api/v1/bills/resend-otp` - Gửi lại OTP
+- `POST /api/v1/bills/batch-create` - Tạo hóa đơn hàng loạt (admin)
+- `GET /api/v1/bills/statistics` - Thống kê hóa đơn (admin)
 
 ### Notifications
 - `GET /api/v1/notifications/` - Thông báo của user
@@ -128,43 +129,75 @@ backend/
 - `GET /api/v1/services/` - Danh sách dịch vụ
 - `POST /api/v1/services/{id}/book` - Đặt dịch vụ
 - `GET /api/v1/services/bookings/my-bookings` - Đặt chỗ của user
-- `POST /api/v1/services/bookings/{id}/confirm` - Xác nhận đặt chỗ (admin)
+- `POST /api/v1/services/bookings/{id}/cancel` - Hủy đặt chỗ
+- `GET /api/v1/services/admin/all` - Tất cả dịch vụ (admin)
+- `GET /api/v1/services/admin/bookings/all` - Tất cả đặt chỗ (admin)
+- `POST /api/v1/services/admin/bookings/{id}/confirm` - Xác nhận đặt chỗ (admin)
+- `PUT /api/v1/services/admin/bookings/{id}/complete` - Hoàn thành dịch vụ (admin)
+
+### Vehicles
+- `GET /api/v1/vehicles/my-vehicles` - Xe của user
+- `POST /api/v1/vehicles/` - Đăng ký xe mới
+- `PUT /api/v1/vehicles/{id}` - Cập nhật thông tin xe
+- `DELETE /api/v1/vehicles/{id}` - Xóa xe
+- `GET /api/v1/vehicles/admin/all` - Tất cả xe (admin)
+- `POST /api/v1/vehicles/admin/{id}/approve` - Duyệt xe (admin)
+- `GET /api/v1/vehicles/stats` - Thống kê xe (admin)
+
+### Apartments
+- `GET /api/v1/apartments/` - Danh sách căn hộ
+- `GET /api/v1/apartments/{id}` - Chi tiết căn hộ
+- `GET /api/v1/apartments/stats/overview` - Thống kê căn hộ (admin)
 
 ## Phân quyền
 
-### User (Cư dân)
-- Xem và thanh toán hóa đơn của mình
+### Resident (Cư dân)
+- Xem và thanh toán hóa đơn với OTP qua email
 - Xem lịch sử thanh toán
 - Nhận và phản hồi thông báo
 - Tạo và theo dõi tickets
-- Đặt dịch vụ và đánh giá
+- Đặt và hủy dịch vụ
+- Đăng ký và quản lý xe
 
-### Admin/Manager
-- Tất cả quyền của User
-- Quản lý hóa đơn và xác nhận thanh toán
-- Quản lý sổ quỹ và đối chiếu
-- Tạo và gửi thông báo
-- Xử lý tickets và phân công
+### Manager (Quản lý)
+- Tất cả quyền của Resident
+- Quản lý căn hộ và cư dân
+- Quản lý nhân viên (staff)
+- Xem tất cả báo cáo và thống kê
+
+### Accountant (Kế toán)
+- Quản lý hóa đơn (tạo, sửa, xóa)
+- Tạo hóa đơn hàng loạt
+- Gửi nhắc nợ
+- Xuất báo cáo thu chi
+- Xem thống kê tài chính
+
+### Receptionist (Lễ tân)
+- Quản lý tickets (nhận, phân công, xử lý)
 - Quản lý dịch vụ và xác nhận đặt chỗ
+- Quản lý đăng ký xe (duyệt/từ chối)
+- Tạo và gửi thông báo
+- Xem thông tin nhân viên
 
 ## Database Schema
 
 ### Bảng chính:
-- `users` - Thông tin người dùng
-- `bills` - Hóa đơn
-- `payments` - Thanh toán
-- `cashflow` - Sổ quỹ
-- `notifications` - Thông báo
-- `tickets` - Phản ánh/khiếu nại
-- `services` - Dịch vụ
-- `servicebookings` - Đặt dịch vụ
+- `user` - Thông tin người dùng (cư dân và staff)
+- `apartment` - Căn hộ
+- `bill` - Hóa đơn
+- `payment` - Thanh toán
+- `notification` - Thông báo
+- `ticket` - Phản ánh/khiếu nại
+- `service` - Dịch vụ
+- `servicebooking` - Đặt dịch vụ
+- `vehicle` - Phương tiện (xe)
 
 ### Bảng phụ:
-- `notificationreads` - Theo dõi đọc thông báo
-- `notificationresponses` - Phản hồi thông báo
-- `ticketattachments` - File đính kèm ticket
-- `ticketlogs` - Lịch sử ticket
-- `bankstatements` - Sao kê ngân hàng
+- `notificationread` - Theo dõi đọc thông báo
+- `notificationresponse` - Phản hồi thông báo
+- `ticketattachment` - File đính kèm ticket
+- `ticketlog` - Lịch sử ticket
+- `ticketcomment` - Bình luận ticket
 
 ## Development
 

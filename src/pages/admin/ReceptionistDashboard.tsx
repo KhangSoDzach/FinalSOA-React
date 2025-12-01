@@ -11,6 +11,7 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
+  Button,
 } from '@chakra-ui/react'
 import {
   FiMessageSquare,
@@ -21,6 +22,7 @@ import {
   FiTruck,
 } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 /**
  * Receptionist Dashboard - Lễ tân
@@ -28,6 +30,7 @@ import { useAuth } from '../../contexts/AuthContext'
  */
 const ReceptionistDashboard = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   const stats = [
     {
@@ -104,22 +107,36 @@ const ReceptionistDashboard = () => {
         <Card>
           <CardBody>
             <Heading size="md" mb={4}>
-              Recent Tickets
+              Quản lý Tickets
             </Heading>
-            <Text color="gray.600">
-              View and manage resident feedback and requests
+            <Text color="gray.600" mb={4}>
+              Xem và xử lý phản hồi, khiếu nại từ cư dân
             </Text>
+            <Button
+              colorScheme="blue"
+              leftIcon={<Icon as={FiMessageSquare} />}
+              onClick={() => navigate('/admin/tickets')}
+            >
+              Xem Tickets
+            </Button>
           </CardBody>
         </Card>
 
         <Card>
           <CardBody>
             <Heading size="md" mb={4}>
-              Service Management
+              Quản lý Dịch vụ
             </Heading>
-            <Text color="gray.600">
-              Manage bookings and service confirmations
+            <Text color="gray.600" mb={4}>
+              Quản lý đặt dịch vụ và xác nhận booking
             </Text>
+            <Button
+              colorScheme="purple"
+              leftIcon={<Icon as={FiSettings} />}
+              onClick={() => navigate('/admin/services')}
+            >
+              Quản lý Services
+            </Button>
           </CardBody>
         </Card>
       </Grid>

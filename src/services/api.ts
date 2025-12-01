@@ -62,7 +62,28 @@ export const authAPI = {
   }) => {
     const response = await api.post('/users/change-password', passwords) 
     return response.data
-  }
+  },
+
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/auth/forgot-password', null, {
+      params: { email }
+    })
+    return response.data
+  },
+
+  verifyResetOtp: async (email: string, otp: string) => {
+    const response = await api.post('/auth/verify-reset-otp', null, {
+      params: { email, otp }
+    })
+    return response.data
+  },
+
+  resetPassword: async (email: string, otp: string, new_password: string) => {
+    const response = await api.post('/auth/reset-password', null, {
+      params: { email, otp, new_password }
+    })
+    return response.data
+  },
 }
 
 export const usersAPI = {
@@ -334,23 +355,50 @@ export const servicesAPI = {
     return response.data
   },
 
+  // Admin endpoints
+  getAllServicesAdmin: async (params?: { category?: string; status?: string }) => {
+    const response = await api.get('/services/admin/all', { params })
+    return response.data
+  },
+
+  getAllBookingsAdmin: async (params?: { 
+    status?: string
+    service_id?: number
+    user_id?: number
+    skip?: number
+    limit?: number
+  }) => {
+    const response = await api.get('/services/admin/bookings/all', { params })
+    return response.data
+  },
+
+  confirmBooking: async (bookingId: number, data: { status: string; notes?: string }) => {
+    const response = await api.post(`/services/admin/bookings/${bookingId}/confirm`, data)
+    return response.data
+  },
+
+  completeBooking: async (bookingId: number) => {
+    const response = await api.put(`/services/admin/bookings/${bookingId}/complete`)
+    return response.data
+  },
+
   getById: async (id: number) => {
     const response = await api.get(`/services/${id}`)
     return response.data
   },
   
   create: async (serviceData: any) => {
-    const response = await api.post('/services', serviceData)
+    const response = await api.post('/services/admin', serviceData)
     return response.data
   },
   
   update: async (id: number, serviceData: any) => {
-    const response = await api.put(`/services/${id}`, serviceData)
+    const response = await api.put(`/services/admin/${id}`, serviceData)
     return response.data
   },
   
   delete: async (id: number) => {
-    const response = await api.delete(`/services/${id}`)
+    const response = await api.delete(`/services/admin/${id}`)
     return response.data
   }
 }
@@ -384,33 +432,6 @@ export const notificationsAPI = {
   
   create: async (notificationData: any) => {
     const response = await api.post('/notifications', notificationData)
-    return response.data
-  }
-}
-
-export const cashflowAPI = {
-  getAll: async () => {
-    const response = await api.get('/cashflow')
-    return response.data
-  },
-  
-  getById: async (id: number) => {
-    const response = await api.get(`/cashflow/${id}`)
-    return response.data
-  },
-  
-  create: async (cashflowData: any) => {
-    const response = await api.post('/cashflow', cashflowData)
-    return response.data
-  },
-  
-  update: async (id: number, cashflowData: any) => {
-    const response = await api.put(`/cashflow/${id}`, cashflowData)
-    return response.data
-  },
-  
-  delete: async (id: number) => {
-    const response = await api.delete(`/cashflow/${id}`)
     return response.data
   }
 }

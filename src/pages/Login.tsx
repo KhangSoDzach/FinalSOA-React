@@ -20,7 +20,7 @@ import {
 } from '@chakra-ui/react'
 import { FiUser, FiLock, FiLogIn } from 'react-icons/fi'
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Login() {
@@ -136,7 +136,7 @@ export default function Login() {
                     >
                       Remember me
                     </Checkbox>
-                    <Link color="brand.500" fontSize="sm">
+                    <Link as={RouterLink} to="/forgot-password" color="brand.500" fontSize="sm">
                       Forgot password?
                     </Link>
                   </HStack>
@@ -156,10 +156,10 @@ export default function Login() {
 
                 {/* Footer */}
                 <Box textAlign="center" pt="4">
-                  <Text fontSize="sm" color="gray.600">
+                  {/* <Text fontSize="sm" color="gray.600">
                     Don't have an account?{' '}
                     <Link color="brand.500">Contact Management</Link>
-                  </Text>
+                  </Text> */}
                 </Box>
               </VStack>
             </CardBody>

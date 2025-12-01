@@ -24,7 +24,7 @@ def reset_database():
             # Drop all enums first (if they exist)
             enums = [
                 "userrole", "billtype", "billstatus", "paymentmethod", "paymentstatus",
-                "cashflowtype", "cashflowcategory", "notificationtype", "notificationstatus",
+                "notificationtype", "notificationstatus",
                 "responsetype", "ticketstatus", "ticketpriority", "ticketcategory",
                 "servicestatus", "servicecategory", "bookingstatus"
             ]

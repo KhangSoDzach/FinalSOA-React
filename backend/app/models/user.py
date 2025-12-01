@@ -38,6 +38,10 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     
+    # Password reset fields
+    reset_otp: Optional[str] = None
+    reset_otp_created_at: Optional[datetime] = None
+    
     # Relationships
     bills: List["Bill"] = Relationship(back_populates="user")
     tickets: List["Ticket"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[Ticket.user_id]"})

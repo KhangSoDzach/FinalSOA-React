@@ -63,7 +63,7 @@ export default function Dashboard() {
     <Box>
       {/* Balance Overview */}
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6" mb="8">
-        <Card bg="gradient-to-br from-green-400 to-green-600" color="white">
+        {/* <Card bg="gradient-to-br from-green-400 to-green-600" color="white">
           <CardBody>
             <Stat>
               <StatLabel color="whiteAlpha.900">Số dư tài khoản</StatLabel>
@@ -101,7 +101,7 @@ export default function Dashboard() {
               </StatHelpText>
             </Stat>
           </CardBody>
-        </Card>
+        </Card> */}
       </SimpleGrid>
 
       {/* Quick Access Section */}
@@ -145,7 +145,7 @@ export default function Dashboard() {
 
       {/* Overview Stats */}
       <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap="6" mb="8">
-        <Card>
+        {/* <Card>
           <CardBody>
             <Text fontSize="xl" fontWeight="semibold" mb="6">
               Financial Overview
@@ -178,9 +178,9 @@ export default function Dashboard() {
               View All Bills
             </Button>
           </CardBody>
-        </Card>
+        </Card> */}
 
-        <Card>
+        {/* <Card>
           <CardBody>
             <Text fontSize="xl" fontWeight="semibold" mb="6">
               Recent Activity
@@ -212,11 +212,11 @@ export default function Dashboard() {
               </Box>
             </VStack>
           </CardBody>
-        </Card>
+        </Card> */}
       </Grid>
 
       {/* Announcements */}
-      <Card>
+      {/* <Card>
         <CardBody>
           <Text fontSize="xl" fontWeight="semibold" mb="4">
             Latest Announcements
@@ -242,7 +242,7 @@ export default function Dashboard() {
             </Box>
           </VStack>
         </CardBody>
-      </Card>
+      </Card> */}
     </Box>
   )
 }

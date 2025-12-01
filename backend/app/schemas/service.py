@@ -87,5 +87,4 @@ class ServiceBookingResponse(ServiceBookingBase):
         from_attributes = True
 
 class BookingConfirm(BaseModel):
-    status: BookingStatus
-    completion_notes: Optional[str] = None
+    notes: Optional[str] = None

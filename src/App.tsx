@@ -9,6 +9,7 @@ import Utilities from './pages/Utilities'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
 import Notifications from './pages/Notifications'
 import ApartmentsManagement from './pages/admin/ApartmentsManagement'
 import UsersManagement from './pages/admin/UsersManagement'
@@ -21,6 +22,7 @@ import ReceptionistDashboard from './pages/admin/ReceptionistDashboard'
 import AccountantBills from './pages/admin/AccountantBills'
 import StaffManagement from './pages/admin/StaffManagement'
 import StaffView from './pages/admin/StaffView'
+import ServicesManagement from './pages/admin/ServicesManagement'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import RoleBasedRoute from './components/RoleBasedRoute'
 import { useAuth } from './contexts/AuthContext'
@@ -56,6 +58,12 @@ function App() {
           path="/login" 
           element={
             isAuthenticated ? <Navigate to="/" replace /> : <Login />
+          } 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={
+            isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />
           } 
         />
         <Route 
@@ -118,6 +126,11 @@ function App() {
           <Route path="admin/notifications" element={
             <RoleBasedRoute allowedRoles={['receptionist']}>
               <NotificationsManagement />
+            </RoleBasedRoute>
+          } />
+          <Route path="admin/services" element={
+            <RoleBasedRoute allowedRoles={['receptionist']}>
+              <ServicesManagement />
             </RoleBasedRoute>
           } />
         </Route>
