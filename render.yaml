@@ -17,15 +17,11 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "30"
-      - key: SMTP_HOST
+      - key: EMAIL_HOST
         value: smtp.gmail.com
-      - key: SMTP_PORT
+      - key: EMAIL_PORT
         value: "587"
-      - key: SMTP_USERNAME
+      - key: EMAIL_USER
         sync: false
-      - key: SMTP_PASSWORD
+      - key: EMAIL_PASS
         sync: false
-      - key: SMTP_FROM_EMAIL
-        sync: false
-      - key: SMTP_FROM_NAME
-        value: Apartment Management System
