@@ -26,7 +26,7 @@ class Service(SQLModel, table=True):
     name: str
     description: str
     category: ServiceCategory
-    price: Decimal = Field(decimal_places=2)
+    # price: Decimal = Field(decimal_places=2)
     unit: str  # "per hour", "per service", "per room", etc.
     status: ServiceStatus = Field(default=ServiceStatus.ACTIVE)
     

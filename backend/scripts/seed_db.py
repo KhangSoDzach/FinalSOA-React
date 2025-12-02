@@ -15,6 +15,7 @@ from app.models.notification import Notification, NotificationType, Notification
 from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
 from app.models.apartment import Apartment, ApartmentStatus
 from app.models.vehicle import Vehicle, VehicleType, VehicleStatus
+from app.models.price_history import PriceHistory, PriceType
 from app.core.security import get_password_hash
 
 
@@ -205,7 +206,6 @@ def create_services_and_bookings(users, session):
             name="Dọn dẹp căn hộ (Tiêu chuẩn)",
             description="Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.",
             category=ServiceCategory.CLEANING,
-            price=Decimal("150000"),
             unit="giờ",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -216,7 +216,6 @@ def create_services_and_bookings(users, session):
             name="Vệ sinh Sofa & Thảm",
             description="Giặt sofa nỉ/da, giặt thảm phòng khách bằng máy chuyên dụng.",
             category=ServiceCategory.CLEANING,
-            price=Decimal("450000"),
             unit="bộ",
             status=ServiceStatus.ACTIVE,
             available_days="[5,6]", 
@@ -227,7 +226,6 @@ def create_services_and_bookings(users, session):
             name="Diệt côn trùng",
             description="Phun thuốc diệt muỗi, gián, kiến an toàn sinh học.",
             category=ServiceCategory.CLEANING,
-            price=Decimal("600000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
             available_days="[1,3,5]",
@@ -239,7 +237,6 @@ def create_services_and_bookings(users, session):
             name="Sửa chữa điện lạnh",
             description="Bảo dưỡng máy lạnh, bơm ga, sửa tủ lạnh, máy giặt.",
             category=ServiceCategory.REPAIR,
-            price=Decimal("250000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5]",
@@ -250,7 +247,6 @@ def create_services_and_bookings(users, session):
             name="Sửa chữa Điện & Nước",
             description="Xử lý rò rỉ nước, thay bóng đèn, sửa ổ cắm, thông tắc cống.",
             category=ServiceCategory.REPAIR,
-            price=Decimal("200000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -261,7 +257,6 @@ def create_services_and_bookings(users, session):
             name="Dịch vụ Thợ khóa",
             description="Mở khóa cửa, thay khóa từ, sửa khóa két sắt.",
             category=ServiceCategory.CLEANING,
-            price=Decimal("150000"),
             unit="lần",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -273,7 +268,6 @@ def create_services_and_bookings(users, session):
             name="Giao nước uống (19L)",
             description="Đổi nước bình 19L (Lavie/Vĩnh Hảo) tận căn hộ.",
             category=ServiceCategory.DELIVERY, 
-            price=Decimal("650000"),
             unit="bình",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -284,7 +278,6 @@ def create_services_and_bookings(users, session):
             name="Giặt ủi giao nhận tận nơi",
             description="Giặt sấy, gấp gọn. Giá tính theo kg. Giao nhận trong 24h.",
             category=ServiceCategory.CLEANING, 
-            price=Decimal("25000"),
             unit="kg",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -296,7 +289,6 @@ def create_services_and_bookings(users, session):
             name="Thuê khu vực BBQ",
             description="Đặt chỗ khu nướng BBQ sân thượng (Bao gồm lò nướng + than).",
             category=ServiceCategory.OTHER, 
-            price=Decimal("300000"),
             unit="giờ",
             status=ServiceStatus.ACTIVE,
             available_days="[4,5,6]", 
@@ -307,7 +299,6 @@ def create_services_and_bookings(users, session):
             name="Chăm sóc thú cưng (Pet Sitting)",
             description="Trông giữ chó mèo, dắt chó đi dạo trong khuôn viên.",
             category=ServiceCategory.OTHER, 
-            price=Decimal("100000"),
             unit="giờ",
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
@@ -324,18 +315,191 @@ def create_services_and_bookings(users, session):
     for s in services:
         session.refresh(s)
 
+    # Tạo Price History cho các services
+    print("💰 Creating price histories for services...")
+    price_histories = [
+        # Phí quản lý chung cư theo m2
+        PriceHistory(
+            type=PriceType.MANAGEMENT_FEE_PER_M2,
+            reference_id=None,
+            price=Decimal("30000"),
+            description="Phí quản lý Q4/2024",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id  # manager
+        ),
+        PriceHistory(
+            type=PriceType.MANAGEMENT_FEE_PER_M2,
+            reference_id=None,
+            price=Decimal("35000"),
+            description="Tăng phí từ tháng 12/2024 theo QĐ ban quản trị",
+            effective_from=datetime(2024, 12, 1),
+            created_by=users[0].id
+        ),
+        
+        # Phí gửi xe ô tô
+        PriceHistory(
+            type=PriceType.PARKING_CAR,
+            reference_id=None,
+            price=Decimal("1200000"),
+            description="Phí gửi xe ô tô theo tháng",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.PARKING_CAR,
+            reference_id=None,
+            price=Decimal("1500000"),
+            description="Tăng phí gửi xe ô tô từ 01/12/2024",
+            effective_from=datetime(2024, 12, 1),
+            created_by=users[0].id
+        ),
+        
+        # Phí gửi xe máy
+        PriceHistory(
+            type=PriceType.PARKING_MOTOR,
+            reference_id=None,
+            price=Decimal("100000"),
+            description="Phí gửi xe máy theo tháng",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.PARKING_MOTOR,
+            reference_id=None,
+            price=Decimal("120000"),
+            description="Tăng phí gửi xe máy từ 01/12/2024",
+            effective_from=datetime(2024, 12, 1),
+            created_by=users[0].id
+        ),
+        
+        # Phí gửi xe đạp
+        PriceHistory(
+            type=PriceType.PARKING_BICYCLE,
+            reference_id=None,
+            price=Decimal("50000"),
+            description="Phí gửi xe đạp theo tháng",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # Giá dịch vụ Dọn dẹp căn hộ (service_id = 1)
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[0].id,
+            price=Decimal("150000"),
+            description="Giá khởi điểm dịch vụ dọn dẹp",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[0].id,
+            price=Decimal("180000"),
+            description="Tăng giá mùa cao điểm Tết từ 15/12/2024",
+            effective_from=datetime(2024, 12, 15),
+            created_by=users[0].id
+        ),
+        
+        # Giá các dịch vụ khác
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[1].id,  # Vệ sinh Sofa & Thảm
+            price=Decimal("450000"),
+            description="Giá vệ sinh sofa & thảm",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[2].id,  # Diệt côn trùng
+            price=Decimal("600000"),
+            description="Giá diệt côn trùng",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[3].id,  # Sửa chữa điện lạnh
+            price=Decimal("250000"),
+            description="Giá sửa chữa điện lạnh",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[3].id,
+            price=Decimal("300000"),
+            description="Tăng giá mùa nóng từ 01/12/2024",
+            effective_from=datetime(2024, 12, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[4].id,  # Sửa chữa Điện & Nước
+            price=Decimal("200000"),
+            description="Giá sửa chữa điện & nước",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[5].id,  # Dịch vụ Thợ khóa
+            price=Decimal("150000"),
+            description="Giá dịch vụ thợ khóa",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[6].id,  # Giao nước uống
+            price=Decimal("65000"),
+            description="Giá giao nước uống 19L",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[7].id,  # Giặt ủi
+            price=Decimal("25000"),
+            description="Giá giặt ủi/kg",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[8].id,  # Thuê khu vực BBQ
+            price=Decimal("300000"),
+            description="Giá thuê khu BBQ/giờ",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[9].id,  # Pet Sitting
+            price=Decimal("100000"),
+            description="Giá chăm sóc thú cưng/giờ",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+    ]
+    
+    for ph in price_histories:
+        session.add(ph)
+    session.commit()
+    print(f"✅ Created {len(price_histories)} price history records")
+
     # 2. Tạo Bookings
     
     # Booking 1: PENDING (Để test nút Cancel)
     booking_pending = ServiceBooking(
         booking_number="BK-PENDING-01",
         service_id=services[0].id,
-        user_id=users[2].id, # user001
+        user_id=users[3].id, # user001
         scheduled_date=datetime.now() + timedelta(days=2),
         scheduled_time_start=time(9, 0),
-        unit_price=services[0].price,
+        unit_price=Decimal("150000"),  # Giá cũ (trước Tết)
         quantity=2,
-        total_amount=services[0].price * 2,
+        total_amount=Decimal("300000"),
         status=BookingStatus.PENDING,
         created_at=datetime.now()
     )
@@ -344,12 +508,12 @@ def create_services_and_bookings(users, session):
     booking_completed = ServiceBooking(
         booking_number="BK-COMPLETED-01",
         service_id=services[1].id,
-        user_id=users[2].id,
+        user_id=users[3].id,
         scheduled_date=datetime.now() - timedelta(days=10),
         scheduled_time_start=time(14, 0),
-        unit_price=services[1].price,
+        unit_price=Decimal("450000"),
         quantity=1,
-        total_amount=services[1].price,
+        total_amount=Decimal("450000"),
         status=BookingStatus.COMPLETED,
         completed_at=datetime.now() - timedelta(days=10),
         created_at=datetime.now() - timedelta(days=12)
@@ -473,13 +637,13 @@ def create_apartments():
     floors = 5  # 5 lầu
     rooms_per_floor = 5  # 5 phòng mỗi lầu
     
-    # Định nghĩa các loại căn hộ
+    # Định nghĩa các loại căn hộ (đã XÓA monthly_fee)
     apartment_types = [
-        {"area": 55.0, "bedrooms": 1, "bathrooms": 1, "base_fee": 1800000},  # Studio
-        {"area": 65.0, "bedrooms": 2, "bathrooms": 1, "base_fee": 2300000},  # 2PN
-        {"area": 75.0, "bedrooms": 2, "bathrooms": 2, "base_fee": 2800000},  # 2PN + 2WC
-        {"area": 85.0, "bedrooms": 3, "bathrooms": 2, "base_fee": 3200000},  # 3PN
-        {"area": 100.0, "bedrooms": 3, "bathrooms": 3, "base_fee": 3800000}, # 3PN cao cấp
+        {"area": 55.0, "bedrooms": 1, "bathrooms": 1},  # Studio
+        {"area": 65.0, "bedrooms": 2, "bathrooms": 1},  # 2PN
+        {"area": 75.0, "bedrooms": 2, "bathrooms": 2},  # 2PN + 2WC
+        {"area": 85.0, "bedrooms": 3, "bathrooms": 2},  # 3PN
+        {"area": 100.0, "bedrooms": 3, "bathrooms": 3}, # 3PN cao cấp
     ]
     
     for building in buildings:
@@ -490,9 +654,6 @@ def create_apartments():
                 
                 # Chọn loại căn hộ (xoay vòng)
                 apt_type = apartment_types[(room - 1) % len(apartment_types)]
-                
-                # Phí tăng theo tầng (100k mỗi tầng)
-                monthly_fee = apt_type["base_fee"] + (floor - 1) * 100000
                 
                 # Mặc định tất cả đều AVAILABLE
                 status = ApartmentStatus.AVAILABLE
@@ -512,7 +673,6 @@ def create_apartments():
                     area=apt_type["area"],
                     bedrooms=apt_type["bedrooms"],
                     bathrooms=apt_type["bathrooms"],
-                    monthly_fee=monthly_fee,
                     status=status,
                     description=description
                 )

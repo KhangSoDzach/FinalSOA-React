@@ -20,11 +20,14 @@ class Apartment(SQLModel, table=True):
     bedrooms: int = Field(default=1)  # Số phòng ngủ
     bathrooms: int = Field(default=1)  # Số phòng tắm
     status: ApartmentStatus = Field(default=ApartmentStatus.AVAILABLE)
-    monthly_fee: float = Field(default=0.0)  # Phí quản lý hàng tháng (chỉ áp dụng cho renter)
+    
+    # monthly_fee: float = Field(default=0.0)  # Phí quản lý hàng tháng (chỉ áp dụng cho renter)
+    
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     
     # Thông tin cư dân (nếu có)
-    resident_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    
+    resident_id: Optional[int] = Field(default=None, foreign_key="users.id")
     resident: Optional["User"] = Relationship(back_populates="apartment")

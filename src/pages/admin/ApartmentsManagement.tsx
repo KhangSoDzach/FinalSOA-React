@@ -46,7 +46,8 @@ import {
   FiTrash2,
   FiUserPlus,
   FiUserMinus,
-  FiRefreshCw
+  FiRefreshCw,
+  FiEye
 } from 'react-icons/fi';
 import api from '../../services/api';
 
@@ -128,6 +129,12 @@ const ApartmentsManagement: React.FC = () => {
     isOpen: isAssignOpen,
     onOpen: onAssignOpen,
     onClose: onAssignClose
+  } = useDisclosure();
+
+  const {
+    isOpen: isResidentDetailOpen,
+    onOpen: onResidentDetailOpen,
+    onClose: onResidentDetailClose
   } = useDisclosure();
 
   const toast = useToast();
@@ -240,6 +247,11 @@ const ApartmentsManagement: React.FC = () => {
       occupier_type: 'owner'
     });
     onAssignOpen();
+  };
+
+  const handleOpenResidentDetail = (apartment: Apartment) => {
+    setSelectedApartment(apartment);
+    onResidentDetailOpen();
   };
 
   const handleSubmit = async () => {
@@ -463,12 +475,12 @@ const ApartmentsManagement: React.FC = () => {
                 </Td>
                 <Td>
                   {apartment.resident ? (
-                    <Box>
-                      <Text fontSize="sm">{apartment.resident.full_name}</Text>
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="sm" fontWeight="medium">{apartment.resident.full_name}</Text>
                       <Text fontSize="xs" color="gray.500">
                         {apartment.resident.email}
                       </Text>
-                    </Box>
+                    </VStack>
                   ) : (
                     <Text fontSize="sm" color="gray.500">Chưa có</Text>
                   )}
@@ -484,6 +496,18 @@ const ApartmentsManagement: React.FC = () => {
                 </Td>
                 <Td textAlign="right">
                   <HStack spacing={1} justify="flex-end">
+                    {apartment.resident && (
+                      <Tooltip label="Xem thông tin cư dân">
+                        <IconButton
+                          aria-label="View resident"
+                          icon={<FiEye />}
+                          size="sm"
+                          onClick={() => handleOpenResidentDetail(apartment)}
+                          colorScheme="purple"
+                          variant="ghost"
+                        />
+                      </Tooltip>
+                    )}
                     <Tooltip label="Sửa">
                       <IconButton
                         aria-label="Edit"
@@ -654,6 +678,163 @@ const ApartmentsManagement: React.FC = () => {
             </Button>
             <Button colorScheme="purple" onClick={handleAssignUser}>
               Gán cư dân
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal xem chi tiết cư dân */}
+      <Modal isOpen={isResidentDetailOpen} onClose={onResidentDetailClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <HStack spacing={3}>
+              <Text>Thông tin cư dân - Căn hộ {selectedApartment?.apartment_number}</Text>
+              {selectedApartment?.resident?.occupier && (
+                <Badge 
+                  colorScheme={selectedApartment.resident.occupier === 'owner' ? 'purple' : 'orange'}
+                  fontSize="md"
+                  px={3}
+                  py={1}
+                >
+                  {selectedApartment.resident.occupier === 'owner' ? 'Chủ hộ' : 'Người thuê'}
+                </Badge>
+              )}
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            {selectedApartment?.resident ? (
+              <VStack spacing={5} align="stretch">
+                {/* Thông tin cá nhân */}
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" color="purple.600" mb={3}>
+                    📋 Thông tin cá nhân
+                  </Text>
+                  <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Họ và tên</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.resident.full_name}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Tên đăng nhập</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.resident.username}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Email</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.resident.email}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Số điện thoại</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.resident.phone || 'Chưa cập nhật'}
+                      </Text>
+                    </FormControl>
+                  </Grid>
+                </Box>
+
+                {/* Thông tin căn hộ */}
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" color="purple.600" mb={3}>
+                    🏠 Thông tin căn hộ
+                  </Text>
+                  <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Số căn hộ</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.apartment_number}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Tòa nhà</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.building}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Tầng</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        Tầng {selectedApartment.floor}
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Diện tích</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.area}m²
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Số phòng ngủ</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.bedrooms} phòng
+                      </Text>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm" color="gray.600">Số phòng tắm</FormLabel>
+                      <Text fontWeight="semibold" fontSize="md">
+                        {selectedApartment.bathrooms} phòng
+                      </Text>
+                    </FormControl>
+                  </Grid>
+                </Box>
+
+                {/* Phí quản lý */}
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" color="purple.600" mb={3}>
+                    💰 Thông tin phí
+                  </Text>
+                  <Card bg="purple.50" border="1px" borderColor="purple.200">
+                    <CardBody>
+                      <VStack align="stretch" spacing={2}>
+                        <Flex justify="space-between" align="center">
+                          <Text fontSize="sm" color="gray.600">Loại cư dân:</Text>
+                          <Badge 
+                            colorScheme={selectedApartment.resident.occupier === 'owner' ? 'purple' : 'orange'}
+                            fontSize="sm"
+                          >
+                            {selectedApartment.resident.occupier === 'owner' ? 'Chủ hộ' : 'Người thuê'}
+                          </Badge>
+                        </Flex>
+                        <Flex justify="space-between" align="center">
+                          <Text fontSize="sm" color="gray.600">Phí quản lý hàng tháng:</Text>
+                          {selectedApartment.resident.occupier === 'owner' ? (
+                            <Text fontWeight="bold" color="green.600">Miễn phí</Text>
+                          ) : (
+                            <Text fontWeight="bold" color="red.600" fontSize="lg">
+                              {selectedApartment.monthly_fee?.toLocaleString() || 0} VND
+                            </Text>
+                          )}
+                        </Flex>
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                </Box>
+
+                {/* Ghi chú */}
+                {selectedApartment.description && (
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" color="purple.600" mb={3}>
+                      📝 Ghi chú
+                    </Text>
+                    <Text fontSize="sm" color="gray.700" p={3} bg="gray.50" borderRadius="md">
+                      {selectedApartment.description}
+                    </Text>
+                  </Box>
+                )}
+              </VStack>
+            ) : (
+              <Text>Không có thông tin cư dân</Text>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="purple" onClick={onResidentDetailClose}>
+              Đóng
             </Button>
           </ModalFooter>
         </ModalContent>

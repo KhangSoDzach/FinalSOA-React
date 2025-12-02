@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS bills CASCADE;
 DROP TABLE IF EXISTS residents CASCADE;
 DROP TABLE IF EXISTS apartments CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS price_histories CASCADE;
 
 -- Drop ENUMs
 DROP TYPE IF EXISTS user_role CASCADE;
@@ -59,6 +60,8 @@ CREATE TYPE service_status AS ENUM ('active', 'inactive');
 CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
 CREATE TYPE notification_type AS ENUM ('maintenance', 'bill_reminder', 'event', 'announcement', 'system');
 CREATE TYPE notification_status AS ENUM ('draft', 'scheduled', 'sent', 'cancelled');
+--Nếu cần thêm hay xóa thêm các loại chi phí khác thi thêm vào đây
+CREATE TYPE price_type AS ENUM ('service', 'management_fee_per_m2', 'parking_car', 'parking_motor', 'parking_bicycle', 'water_tier_1', 'electricity_tier_1', 'other');
 
 -- ============================================
 -- CREATE TABLES
@@ -90,10 +93,10 @@ CREATE TABLE apartments (
     apartment_number VARCHAR(20) UNIQUE NOT NULL,
     building VARCHAR(10) NOT NULL,
     floor INTEGER NOT NULL,
-    area DECIMAL(10, 2) NOT NULL,
+    area DECIMAL(10, 2) NOT NULL, -- Diện tích vẫn giữ để nhân với đơn giá
     bedrooms INTEGER DEFAULT 1,
     bathrooms INTEGER DEFAULT 1,
-    monthly_fee DECIMAL(10, 2) NOT NULL,
+    -- monthly_fee DECIMAL(10, 2), -- ĐÃ XÓA
     status apartment_status DEFAULT 'available',
     resident_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     description TEXT,
@@ -144,6 +147,16 @@ CREATE TABLE payments (
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE price_histories (
+    id SERIAL PRIMARY KEY,
+    type price_type NOT NULL, -- Loại giá
+    reference_id INTEGER, -- ID tham chiếu (ví dụ: service_id). Null nếu là phí chung (như phí quản lý/m2)
+    price DECIMAL(10, 2) NOT NULL, -- Giá trị
+    description VARCHAR(200), -- Ghi chú (VD: Tăng giá theo quyết định 2025)
+    effective_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Giá này bắt đầu áp dụng từ khi nào
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Ai là người set giá này
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tickets table
@@ -201,7 +214,7 @@ CREATE TABLE services (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     category service_category NOT NULL,
-    price DECIMAL(10, 2) NOT NULL,
+    -- price DECIMAL(10, 2), -- ĐÃ XÓA
     unit VARCHAR(50) NOT NULL,
     status service_status DEFAULT 'active',
     available_days VARCHAR(50) DEFAULT '[0,1,2,3,4,5,6]',
@@ -307,43 +320,43 @@ UPDATE users SET apartment_number = 'B203', building = 'B' WHERE username = 'use
 UPDATE users SET apartment_number = 'B404', building = 'B' WHERE username = 'user006';
 
 -- Insert sample apartments (50 apartments: 2 buildings x 5 floors x 5 rooms)
-INSERT INTO apartments (apartment_number, building, floor, area, bedrooms, bathrooms, monthly_fee, status, description) VALUES
+INSERT INTO apartments (apartment_number, building, floor, area, bedrooms, bathrooms, status, description) VALUES
 -- Building A, Floor 1
-('A101', 'A', 1, 55.0, 1, 1, 1800000, 'occupied', 'Căn góc, view đẹp'),
-('A102', 'A', 1, 65.0, 2, 1, 2300000, 'available', NULL),
-('A103', 'A', 1, 75.0, 2, 2, 2800000, 'available', NULL),
-('A104', 'A', 1, 85.0, 3, 2, 3200000, 'available', NULL),
-('A105', 'A', 1, 100.0, 3, 3, 3800000, 'available', NULL),
+('A101', 'A', 1, 55.0, 1, 1, 'occupied', 'Căn góc, view đẹp'),
+('A102', 'A', 1, 65.0, 2, 1, 'available', NULL),
+('A103', 'A', 1, 75.0, 2, 2, 'available', NULL),
+('A104', 'A', 1, 85.0, 3, 2, 'available', NULL),
+('A105', 'A', 1, 100.0, 3, 3, 'available', NULL),
 -- Building A, Floor 2
-('A201', 'A', 2, 55.0, 1, 1, 1900000, 'available', NULL),
-('A202', 'A', 2, 65.0, 2, 1, 2400000, 'occupied', NULL),
-('A203', 'A', 2, 75.0, 2, 2, 2900000, 'available', NULL),
-('A204', 'A', 2, 85.0, 3, 2, 3300000, 'available', NULL),
-('A205', 'A', 2, 100.0, 3, 3, 3900000, 'available', NULL),
+('A201', 'A', 2, 55.0, 1, 1, 'available', NULL),
+('A202', 'A', 2, 65.0, 2, 1, 'occupied', NULL),
+('A203', 'A', 2, 75.0, 2, 2, 'available', NULL),
+('A204', 'A', 2, 85.0, 3, 2, 'available', NULL),
+('A205', 'A', 2, 100.0, 3, 3, 'available', NULL),
 -- Building A, Floor 3
-('A301', 'A', 3, 55.0, 1, 1, 2000000, 'available', NULL),
-('A302', 'A', 3, 65.0, 2, 1, 2500000, 'available', NULL),
-('A303', 'A', 3, 75.0, 2, 2, 3000000, 'available', NULL),
-('A304', 'A', 3, 85.0, 3, 2, 3400000, 'available', NULL),
-('A305', 'A', 3, 100.0, 3, 3, 4000000, 'occupied', NULL),
+('A301', 'A', 3, 55.0, 1, 1, 'available', NULL),
+('A302', 'A', 3, 65.0, 2, 1, 'available', NULL),
+('A303', 'A', 3, 75.0, 2, 2, 'available', NULL),
+('A304', 'A', 3, 85.0, 3, 2, 'available', NULL),
+('A305', 'A', 3, 100.0, 3, 3, 'occupied', NULL),
 -- Building B, Floor 1
-('B101', 'B', 1, 55.0, 1, 1, 1800000, 'occupied', 'Căn góc, view đẹp'),
-('B102', 'B', 1, 65.0, 2, 1, 2300000, 'available', NULL),
-('B103', 'B', 1, 75.0, 2, 2, 2800000, 'available', NULL),
-('B104', 'B', 1, 85.0, 3, 2, 3200000, 'available', NULL),
-('B105', 'B', 1, 100.0, 3, 3, 3800000, 'available', NULL),
+('B101', 'B', 1, 55.0, 1, 1, 'occupied', 'Căn góc, view đẹp'),
+('B102', 'B', 1, 65.0, 2, 1, 'available', NULL),
+('B103', 'B', 1, 75.0, 2, 2, 'available', NULL),
+('B104', 'B', 1, 85.0, 3, 2, 'available', NULL),
+('B105', 'B', 1, 100.0, 3, 3, 'available', NULL),
 -- Building B, Floor 2
-('B201', 'B', 2, 55.0, 1, 1, 1900000, 'available', NULL),
-('B202', 'B', 2, 65.0, 2, 1, 2400000, 'available', NULL),
-('B203', 'B', 2, 75.0, 2, 2, 2900000, 'occupied', NULL),
-('B204', 'B', 2, 85.0, 3, 2, 3300000, 'available', NULL),
-('B205', 'B', 2, 100.0, 3, 3, 3900000, 'available', NULL),
+('B201', 'B', 2, 55.0, 1, 1, 'available', NULL),
+('B202', 'B', 2, 65.0, 2, 1, 'available', NULL),
+('B203', 'B', 2, 75.0, 2, 2, 'occupied', NULL),
+('B204', 'B', 2, 85.0, 3, 2, 'available', NULL),
+('B205', 'B', 2, 100.0, 3, 3, 'available', NULL),
 -- Building B, Floor 4
-('B401', 'B', 4, 55.0, 1, 1, 2100000, 'available', NULL),
-('B402', 'B', 4, 65.0, 2, 1, 2600000, 'available', NULL),
-('B403', 'B', 4, 75.0, 2, 2, 3100000, 'available', NULL),
-('B404', 'B', 4, 85.0, 3, 2, 3500000, 'occupied', NULL),
-('B405', 'B', 4, 100.0, 3, 3, 4100000, 'available', NULL);
+('B401', 'B', 4, 55.0, 1, 1, 'available', NULL),
+('B402', 'B', 4, 65.0, 2, 1, 'available', NULL),
+('B403', 'B', 4, 75.0, 2, 2, 'available', NULL),
+('B404', 'B', 4, 85.0, 3, 2, 'occupied', NULL),
+('B405', 'B', 4, 100.0, 3, 3, 'available', NULL);
 
 -- Link apartments to residents
 UPDATE apartments SET resident_id = (SELECT id FROM users WHERE username = 'user001') WHERE apartment_number = 'A101';
@@ -369,14 +382,45 @@ INSERT INTO tickets (user_id, category, priority, title, description, status, as
 ((SELECT id FROM users WHERE username = 'user002'), 'maintenance', 'high', 'Lỗi khóa cửa ra vào', 'Khóa cửa căn hộ B101 bị kẹt, không thể mở được.', 'closed', (SELECT id FROM users WHERE username = 'receptionist'), 'Đã thay thế ổ khóa mới, cư dân xác nhận hoạt động bình thường.', (SELECT id FROM users WHERE username = 'receptionist'), CURRENT_TIMESTAMP - INTERVAL '3 days');
 
 -- Insert sample services
-INSERT INTO services (name, description, category, price, unit, status, provider_name) VALUES
-('Dọn dẹp căn hộ', 'Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.', 'cleaning', 150000, 'giờ', 'active', 'CleanPro'),
-('Sửa chữa điện lạnh', 'Bảo dưỡng máy lạnh, sửa tủ lạnh, máy giặt.', 'repair', 250000, 'lần', 'active', 'Điện Lạnh 24h');
+INSERT INTO services (name, description, category, unit, status, provider_name) VALUES
+('Dọn dẹp căn hộ', 'Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.', 'cleaning', 'giờ', 'active', 'CleanPro'),
+('Sửa chữa điện lạnh', 'Bảo dưỡng máy lạnh, sửa tủ lạnh, máy giặt.', 'repair', 'lần', 'active', 'Điện Lạnh 24h');
 
 -- Insert sample service bookings
 INSERT INTO service_bookings (booking_number, service_id, user_id, scheduled_date, scheduled_time_start, unit_price, quantity, total_amount, status) VALUES
 ('BK-PENDING-01', 1, (SELECT id FROM users WHERE username = 'user001'), CURRENT_DATE + INTERVAL '2 days', '09:00', 150000, 2, 300000, 'pending'),
 ('BK-COMPLETED-01', 2, (SELECT id FROM users WHERE username = 'user001'), CURRENT_DATE - INTERVAL '10 days', '14:00', 250000, 1, 250000, 'completed');
+
+-- Insert sample price histories (Dữ liệu giá)
+INSERT INTO price_histories (type, reference_id, price, description, effective_from, created_by) VALUES
+-- Phí quản lý chung cư theo m2 (áp dụng chung, không cần reference_id)
+('management_fee_per_m2', NULL, 30000, 'Phí quản lý Q4/2024', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+('management_fee_per_m2', NULL, 35000, 'Tăng phí từ tháng 12/2024 theo QĐ ban quản trị', '2024-12-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Phí gửi xe ô tô
+('parking_car', NULL, 1200000, 'Phí gửi xe ô tô theo tháng', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+('parking_car', NULL, 1500000, 'Tăng phí gửi xe ô tô từ 01/12/2024', '2024-12-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Phí gửi xe máy
+('parking_motor', NULL, 100000, 'Phí gửi xe máy theo tháng', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+('parking_motor', NULL, 120000, 'Tăng phí gửi xe máy từ 01/12/2024', '2024-12-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Phí gửi xe đạp
+('parking_bicycle', NULL, 50000, 'Phí gửi xe đạp theo tháng', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Giá dịch vụ Dọn dẹp căn hộ (service_id = 1)
+('service', 1, 150000, 'Giá khởi điểm dịch vụ dọn dẹp', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+('service', 1, 180000, 'Tăng giá mùa cao điểm Tết từ 15/12/2024', '2024-12-15 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Giá dịch vụ Sửa chữa điện lạnh (service_id = 2)
+('service', 2, 250000, 'Giá sửa chữa điện lạnh', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+('service', 2, 300000, 'Tăng giá mùa nóng từ 01/12/2024', '2024-12-01 00:00:00', (SELECT id FROM users WHERE username = 'manager')),
+
+-- Giá điện bậc 1 (ví dụ)
+('electricity_tier_1', NULL, 1806, 'Giá điện bậc 1 theo EVN Q4/2024', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'accountant')),
+
+-- Giá nước bậc 1 (ví dụ)
+('water_tier_1', NULL, 7000, 'Giá nước sinh hoạt bậc 1', '2024-11-01 00:00:00', (SELECT id FROM users WHERE username = 'accountant'));
 
 -- Insert sample vehicles
 INSERT INTO vehicle_registrations (user_id, license_plate, make, model, color, vehicle_type, status, parking_spot, registered_at, expires_at, approved_at, approved_by) VALUES
