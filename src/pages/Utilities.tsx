@@ -38,6 +38,7 @@ import {
 } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { servicesAPI } from '../services/api'
+import { getServiceUnitText, getBookingStatusText } from '../utils/serviceHelpers'
 
 // Interface khớp với Backend Response
 interface Service {
@@ -260,7 +261,7 @@ export default function Utilities() {
                         <VStack spacing="2" align="stretch" fontSize="sm">
                           <HStack justify="space-between">
                             <Text color="gray.500">Đơn vị:</Text>
-                            <Text fontWeight="medium">{service.unit}</Text>
+                            <Text fontWeight="medium">{getServiceUnitText(service.unit)}</Text>
                           </HStack>
                           <HStack justify="space-between">
                             <Text color="gray.500">Nhà cung cấp:</Text>
@@ -305,7 +306,7 @@ export default function Utilities() {
                               {booking.service?.name || "Dịch vụ #" + booking.service_id}
                             </Text>
                             <Badge colorScheme={getStatusColor(booking.status)}>
-                              {booking.status.toUpperCase()}
+                              {getBookingStatusText(booking.status)}
                             </Badge>
                           </HStack>
                           
@@ -362,7 +363,7 @@ export default function Utilities() {
                             {booking.service?.name || "Dịch vụ cũ"}
                           </Text>
                           <Badge colorScheme={getStatusColor(booking.status)}>
-                            {booking.status.toUpperCase()}
+                            {getBookingStatusText(booking.status)}
                           </Badge>
                         </HStack>
                         
@@ -394,7 +395,7 @@ export default function Utilities() {
                    <HStack justify="space-between">
                     <Text fontSize="sm" fontWeight="medium">Đơn giá:</Text>
                     <Text fontWeight="bold" color="brand.500">
-                      {formatCurrency(selectedService.price)} / {selectedService.unit}
+                      {formatCurrency(selectedService.price)} / {getServiceUnitText(selectedService.unit)}
                     </Text>
                   </HStack>
                 </Box>
@@ -427,7 +428,7 @@ export default function Utilities() {
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel>Số lượng ({selectedService.unit})</FormLabel>
+                    <FormLabel>Số lượng ({getServiceUnitText(selectedService.unit)})</FormLabel>
                     <Input 
                       type="number" 
                       min={1} 

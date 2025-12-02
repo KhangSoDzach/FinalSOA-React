@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Numeric
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, time
 from enum import Enum
@@ -21,13 +22,24 @@ class ServiceCategory(str, Enum):
     DELIVERY = "delivery"
     OTHER = "other"
 
+class ServiceUnit(str, Enum):
+    """Đơn vị tính cho dịch vụ - Chuẩn hóa theo thực tế"""
+    PER_HOUR = "per_hour"          # Tính theo giờ (Dọn dẹp, Thuê BBQ, Pet Sitting)
+    PER_M2 = "per_m2"              # Tính theo m² (Phí quản lý)
+    PER_MONTH = "per_month"        # Tính theo tháng (Gói Gym, Parking subscription)
+    PER_JOB = "per_job"            # Tính theo vụ việc (Sửa chữa điện/nước)
+    PER_PACKAGE = "per_package"    # Tính theo gói (Dọn dẹp theo số phòng ngủ)
+    PER_SLOT = "per_slot"          # Tính theo khung giờ (Thuê phòng họp, BBQ slot)
+    PER_VEHICLE = "per_vehicle"    # Tính theo xe (Parking monthly)
+    PER_UNIT = "per_unit"          # Tính theo đơn vị (Bình nước, kg giặt)
+
 class Service(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     description: str
     category: ServiceCategory
-    # price: Decimal = Field(decimal_places=2)
-    unit: str  # "per hour", "per service", "per room", etc.
+    # price: Decimal = Field(decimal_places=2)  # ĐÃ XÓA - Lấy từ price_histories
+    unit: ServiceUnit  # Đơn vị tính - Chuẩn hóa bằng Enum
     status: ServiceStatus = Field(default=ServiceStatus.ACTIVE)
     
     # Availability
@@ -70,9 +82,9 @@ class ServiceBooking(SQLModel, table=True):
     special_instructions: Optional[str] = None
     
     # Pricing
-    unit_price: Decimal = Field(decimal_places=2)
+    unit_price: Decimal = Field(sa_column=Column(Numeric(15, 2)))
     quantity: int = Field(default=1)
-    total_amount: Decimal = Field(decimal_places=2)
+    total_amount: Decimal = Field(sa_column=Column(Numeric(15, 2)))
     
     status: BookingStatus = Field(default=BookingStatus.PENDING)
     

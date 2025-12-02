@@ -47,5 +47,5 @@ class User(SQLModel, table=True):
     tickets: List["Ticket"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[Ticket.user_id]"})
     payments: List["Payment"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "Payment.user_id"})
     service_bookings: List["ServiceBooking"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[ServiceBooking.user_id]"})
-    apartment: Optional["Apartment"] = Relationship(back_populates="resident")
+    apartment: Optional["Apartment"] = Relationship(back_populates="resident", sa_relationship_kwargs={"foreign_keys": "[Apartment.resident_id]"})
     vehicles: List["Vehicle"] = Relationship(back_populates="user", sa_relationship_kwargs={"foreign_keys": "[Vehicle.user_id]"})

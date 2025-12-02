@@ -5,6 +5,7 @@ from .ticket import Ticket, TicketStatus, TicketPriority, TicketCategory
 from .service import Service, ServiceBooking, ServiceStatus, ServiceCategory, BookingStatus
 from .apartment import Apartment, ApartmentStatus
 from .vehicle import Vehicle, VehicleType, VehicleStatus
+from .price_history import PriceHistory, PriceType
 
 __all__ = [
     "User", "UserRole", "OccupierType", 
@@ -13,5 +14,6 @@ __all__ = [
     "Ticket", "TicketStatus", "TicketPriority", "TicketCategory",
     "Service", "ServiceBooking", "ServiceStatus", "ServiceCategory", "BookingStatus",
     "Apartment", "ApartmentStatus",
-    "Vehicle", "VehicleType", "VehicleStatus"
+    "Vehicle", "VehicleType", "VehicleStatus",
+    "PriceHistory", "PriceType"
 ]

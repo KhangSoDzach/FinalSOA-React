@@ -26,6 +26,7 @@ class BillResponse(BillBase):
     bill_number: str
     user_id: int
     status: BillStatus
+    is_prorated: bool = False  # Badge hiển thị Pro-rata
     # ĐÃ SỬA: Thay đổi thành Optional[datetime] để khớp với model (nếu trường này đã bị xóa)
     created_at: Optional[datetime] = None 
     # Nếu updated_at cũng bị xóa khỏi model, nó cũng nên là Optional ở đây

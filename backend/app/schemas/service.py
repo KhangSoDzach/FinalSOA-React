@@ -2,14 +2,14 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, time
 from decimal import Decimal
-from app.models.service import ServiceCategory, ServiceStatus, BookingStatus
+from app.models.service import ServiceCategory, ServiceStatus, BookingStatus, ServiceUnit
 
 class ServiceBase(BaseModel):
     name: str
     description: str
     category: ServiceCategory
-    price: Decimal
-    unit: str
+    price: Decimal  # Tạm giữ để tương thích với frontend cũ, sẽ xóa sau
+    unit: ServiceUnit  # Đổi từ str sang ServiceUnit
     available_days: str
     available_time_start: Optional[time] = None
     available_time_end: Optional[time] = None
@@ -26,7 +26,7 @@ class ServiceUpdate(BaseModel):
     description: Optional[str] = None
     category: Optional[ServiceCategory] = None
     price: Optional[Decimal] = None
-    unit: Optional[str] = None
+    unit: Optional[ServiceUnit] = None  # Đổi từ str sang ServiceUnit
     status: Optional[ServiceStatus] = None
     available_days: Optional[str] = None
     available_time_start: Optional[time] = None

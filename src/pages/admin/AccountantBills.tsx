@@ -83,6 +83,7 @@ interface Bill {
   status: string
   created_at: string
   paid_at?: string
+  is_prorated?: boolean
 }
 
 interface User {

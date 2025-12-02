@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select, func, or_, delete 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.core.database import get_session
 from app.api.dependencies import get_current_user, get_current_accountant
 from app.models.user import User, UserRole, OccupierType
@@ -565,86 +565,114 @@ async def resend_otp(
 
     return await request_payment(request_data, session, current_user)
 
-@router.post("/generate-monthly-fees", response_model=List[BillResponse])
+@router.post("/generate-monthly-fees", response_model=dict)
 async def generate_monthly_fees(
     month: Optional[int] = None,
     year: Optional[int] = None,
+    include_parking: bool = True,
     current_user: User = Depends(get_current_accountant),
     session: Session = Depends(get_session)
 ):
-    """Generate monthly apartment fees for all renters (accountant/manager only)"""
+    """
+    Generate monthly apartment fees for all residents with Pro-rata support
+    (DEPRECATED: Use /admin/generate-monthly instead)
+    """
+    from app.services.bill_service import generate_monthly_bills_for_all
     
     # Use current month and year if not provided
     now = datetime.utcnow()
     target_month = month or now.month
     target_year = year or now.year
     
-    # Calculate due date (end of the month)
-    if target_month == 12:
-        next_month = 1
-        next_year = target_year + 1
-    else:
-        next_month = target_month + 1
-        next_year = target_year
+    # Calculate billing date (last day of the month)
+    import calendar
+    _, num_days = calendar.monthrange(target_year, target_month)
+    billing_month = date(target_year, target_month, num_days)
     
-    due_date = datetime(next_year, next_month, 1) - timedelta(days=1)
-    due_date = due_date.replace(hour=23, minute=59, second=59)
+    # Use the new Pro-rata service
+    stats = generate_monthly_bills_for_all(
+        session=session,
+        billing_month=billing_month,
+        include_parking=include_parking
+    )
     
-    # Get all apartments with residents
-    statement = select(Apartment).where(Apartment.resident_id.isnot(None))
-    apartments = session.exec(statement).all()
+    return stats
+
+
+# ============================================
+# PRO-RATA BILL GENERATION ENDPOINTS
+# ============================================
+
+@router.post("/admin/generate-monthly", response_model=dict)
+async def generate_monthly_bills_automatic(
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    include_parking: bool = True,
+    current_user: User = Depends(get_current_accountant),
+    session: Session = Depends(get_session)
+):
+    """
+    Tự động tạo tất cả hóa đơn cho tháng (Management Fee + Parking Fee)
+    Áp dụng Pro-rata cho căn hộ chuyển vào giữa tháng
+    """
+    from app.services.bill_service import generate_monthly_bills_for_all
+    from datetime import date
+    import calendar
     
-    created_bills = []
+    # Xác định tháng cần tạo bill
+    now = date.today()
+    target_month = month or now.month
+    target_year = year or now.year
     
-    for apartment in apartments:
-        # Get resident information
-        resident = session.get(User, apartment.resident_id)
-        if not resident:
-            continue
-        
-        # Only create bills for renters
-        if resident.occupier != OccupierType.RENTER:
-            continue
-        
-        # Check if fee is set for this apartment
-        if apartment.monthly_fee <= 0:
-            continue
-        
-        # Check if bill already exists for this month
-        existing_bill = session.exec(
-            select(Bill).where(
-                Bill.user_id == resident.id,
-                Bill.bill_type == BillType.MANAGEMENT_FEE,
-                func.extract('month', Bill.due_date) == target_month,
-                func.extract('year', Bill.due_date) == target_year
-            )
-        ).first()
-        
-        if existing_bill:
-            continue  # Skip if already created
-        
-        # Generate bill number
-        bill_number = generate_bill_number()
-        
-        # Create bill
-        bill = Bill(
-            bill_number=bill_number,
-            user_id=resident.id,
-            bill_type=BillType.MANAGEMENT_FEE,
-            title=f"Phí quản lý tháng {target_month}/{target_year} - Căn hộ {apartment.apartment_number}",
-            description=f"Phí quản lý hàng tháng cho căn hộ {apartment.apartment_number}, tòa {apartment.building}. Loại cư dân: {resident.occupier.value}",
-            amount=Decimal(str(apartment.monthly_fee)),
-            due_date=due_date,
-            status=BillStatus.PENDING
+    # Lấy ngày cuối tháng làm billing_month
+    _, num_days = calendar.monthrange(target_year, target_month)
+    billing_month = date(target_year, target_month, num_days)
+    
+    # Gọi service layer
+    stats = generate_monthly_bills_for_all(
+        session=session,
+        billing_month=billing_month,
+        include_parking=include_parking
+    )
+    
+    return {
+        "success": True,
+        "message": f"Đã tạo hóa đơn tháng {target_month}/{target_year}",
+        "statistics": stats
+    }
+
+
+@router.post("/admin/generate-for-apartment/{apartment_id}", response_model=List[BillResponse])
+async def generate_bills_for_single_apartment(
+    apartment_id: int,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    current_user: User = Depends(get_current_accountant),
+    session: Session = Depends(get_session)
+):
+    """
+    Tạo hóa đơn cho 1 căn hộ cụ thể (Management Fee + Parking Fee)
+    """
+    from app.services.bill_service import generate_bills_for_apartment
+    from datetime import date
+    import calendar
+    
+    # Xác định tháng
+    now = date.today()
+    target_month = month or now.month
+    target_year = year or now.year
+    
+    _, num_days = calendar.monthrange(target_year, target_month)
+    billing_month = date(target_year, target_month, num_days)
+    
+    # Gọi service
+    try:
+        bills = generate_bills_for_apartment(
+            session=session,
+            apartment_id=apartment_id,
+            billing_month=billing_month
         )
         
-        session.add(bill)
-        created_bills.append(bill)
-    
-    session.commit()
-    
-    # Refresh all created bills
-    for bill in created_bills:
-        session.refresh(bill)
-    
-    return created_bills
+        return bills
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

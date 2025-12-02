@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.core.config import settings
 from app.models.user import User, UserRole, OccupierType
 from app.models.bill import Bill, BillType, BillStatus
-from app.models.service import Service, ServiceCategory, ServiceStatus, ServiceBooking, BookingStatus
+from app.models.service import Service, ServiceCategory, ServiceStatus, ServiceBooking, BookingStatus, ServiceUnit
 from app.models.notification import Notification, NotificationType, NotificationStatus
 from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
 from app.models.apartment import Apartment, ApartmentStatus
@@ -201,12 +201,42 @@ def create_tickets(users):
     
 # HÀM MỚI: Tạo Service và Booking cùng lúc
 def create_services_and_bookings(users, session):
+    """
+    Tạo các dịch vụ theo phân loại thực tế:
+    - Dọn dẹp: per_hour, per_package
+    - Sửa chữa: per_job
+    - Giao hàng: per_unit
+    - Tiện ích: per_hour, per_slot
+    """
     services = [
+        # ========== DỊCH VỤ DỌN DẸP (CLEANING) ==========
+        # Tính theo GIỜ
         Service(
-            name="Dọn dẹp căn hộ (Tiêu chuẩn)",
-            description="Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet.",
+            name="Dọn dẹp căn hộ theo giờ",
+            description="Dịch vụ dọn dẹp vệ sinh tiêu chuẩn: quét, lau sàn, lau bụi, vệ sinh toilet. Tính theo giờ làm việc.",
             category=ServiceCategory.CLEANING,
-            unit="giờ",
+            unit=ServiceUnit.PER_HOUR,
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="CleanPro",
+            created_at=datetime.now()
+        ),
+        # Tính theo GÓI (Package - theo số phòng ngủ)
+        Service(
+            name="Gói Dọn dẹp Căn 1PN",
+            description="Gói dọn dẹp trọn gói cho căn hộ 1 phòng ngủ. Bao gồm: phòng khách, bếp, 1PN, 1WC.",
+            category=ServiceCategory.CLEANING,
+            unit=ServiceUnit.PER_PACKAGE,
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="CleanPro",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Gói Dọn dẹp Căn 2PN",
+            description="Gói dọn dẹp trọn gói cho căn hộ 2 phòng ngủ. Bao gồm: phòng khách, bếp, 2PN, 1-2WC.",
+            category=ServiceCategory.CLEANING,
+            unit=ServiceUnit.PER_PACKAGE,
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
             provider_name="CleanPro",
@@ -214,30 +244,42 @@ def create_services_and_bookings(users, session):
         ),
         Service(
             name="Vệ sinh Sofa & Thảm",
-            description="Giặt sofa nỉ/da, giặt thảm phòng khách bằng máy chuyên dụng.",
+            description="Giặt sofa nỉ/da, giặt thảm phòng khách bằng máy chuyên dụng. Giá theo bộ.",
             category=ServiceCategory.CLEANING,
-            unit="bộ",
+            unit=ServiceUnit.PER_UNIT,
             status=ServiceStatus.ACTIVE,
-            available_days="[5,6]", 
+            available_days="[5,6]",  # Cuối tuần
             provider_name="Sofa Sạch",
             created_at=datetime.now()
         ),
         Service(
             name="Diệt côn trùng",
-            description="Phun thuốc diệt muỗi, gián, kiến an toàn sinh học.",
+            description="Phun thuốc diệt muỗi, gián, kiến an toàn sinh học. Giá theo lần xử lý.",
             category=ServiceCategory.CLEANING,
-            unit="lần",
+            unit=ServiceUnit.PER_JOB,
             status=ServiceStatus.ACTIVE,
             available_days="[1,3,5]",
             provider_name="PestBuster",
             created_at=datetime.now()
         ),
+        Service(
+            name="Giặt ủi giao nhận tận nơi",
+            description="Giặt sấy, gấp gọn. Giá tính theo kg. Giao nhận trong 24h.",
+            category=ServiceCategory.CLEANING,
+            unit=ServiceUnit.PER_UNIT,  # Tính theo kg
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="Giặt Là 365",
+            created_at=datetime.now()
+        ),
 
+        # ========== DỊCH VỤ SỬA CHỮA (REPAIR) ==========
+        # Tính theo VỤ VIỆC (Job)
         Service(
             name="Sửa chữa điện lạnh",
-            description="Bảo dưỡng máy lạnh, bơm ga, sửa tủ lạnh, máy giặt.",
+            description="Bảo dưỡng máy lạnh, bơm ga, sửa tủ lạnh, máy giặt. Phí nhân công theo lần + vật tư tính riêng.",
             category=ServiceCategory.REPAIR,
-            unit="lần",
+            unit=ServiceUnit.PER_JOB,
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5]",
             provider_name="Điện Lạnh 24h",
@@ -245,9 +287,9 @@ def create_services_and_bookings(users, session):
         ),
         Service(
             name="Sửa chữa Điện & Nước",
-            description="Xử lý rò rỉ nước, thay bóng đèn, sửa ổ cắm, thông tắc cống.",
+            description="Xử lý rò rỉ nước, thay bóng đèn, sửa ổ cắm, thông tắc cống. Giá cố định/vụ + vật tư.",
             category=ServiceCategory.REPAIR,
-            unit="lần",
+            unit=ServiceUnit.PER_JOB,
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
             provider_name="Thợ Sài Gòn",
@@ -255,56 +297,88 @@ def create_services_and_bookings(users, session):
         ),
         Service(
             name="Dịch vụ Thợ khóa",
-            description="Mở khóa cửa, thay khóa từ, sửa khóa két sắt.",
-            category=ServiceCategory.CLEANING,
-            unit="lần",
+            description="Mở khóa cửa, thay khóa từ, sửa khóa két sắt. Tính theo lần.",
+            category=ServiceCategory.REPAIR,
+            unit=ServiceUnit.PER_JOB,
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
             provider_name="KeyMaster",
             created_at=datetime.now()
         ),
 
+        # ========== DỊCH VỤ GIAO HÀNG (DELIVERY) ==========
+        # Tính theo ĐƠN VỊ (Unit)
         Service(
             name="Giao nước uống (19L)",
-            description="Đổi nước bình 19L (Lavie/Vĩnh Hảo) tận căn hộ.",
-            category=ServiceCategory.DELIVERY, 
-            unit="bình",
+            description="Đổi nước bình 19L (Lavie/Vĩnh Hảo) tận căn hộ. Giá/bình.",
+            category=ServiceCategory.DELIVERY,
+            unit=ServiceUnit.PER_UNIT,  # Tính theo bình
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
             provider_name="Đại lý Nước Xanh",
             created_at=datetime.now()
         ),
-        Service(
-            name="Giặt ủi giao nhận tận nơi",
-            description="Giặt sấy, gấp gọn. Giá tính theo kg. Giao nhận trong 24h.",
-            category=ServiceCategory.CLEANING, 
-            unit="kg",
-            status=ServiceStatus.ACTIVE,
-            available_days="[0,1,2,3,4,5,6]",
-            provider_name="Giặt Là 365",
-            created_at=datetime.now()
-        ),
 
+        # ========== TIỆN ÍCH TÒA NHÀ (AMENITIES - OTHER) ==========
+        # Tính theo GIỜ (Hour)
         Service(
             name="Thuê khu vực BBQ",
-            description="Đặt chỗ khu nướng BBQ sân thượng (Bao gồm lò nướng + than).",
-            category=ServiceCategory.OTHER, 
-            unit="giờ",
+            description="Đặt chỗ khu nướng BBQ sân thượng (Bao gồm lò nướng + than). Tính theo giờ.",
+            category=ServiceCategory.OTHER,
+            unit=ServiceUnit.PER_HOUR,
             status=ServiceStatus.ACTIVE,
-            available_days="[4,5,6]", 
+            available_days="[5,6]",  # Chỉ cuối tuần
+            available_time_start=time(17, 0),
+            available_time_end=time(22, 0),
+            provider_name="Ban Quản Lý",
+            created_at=datetime.now()
+        ),
+        # Tính theo SLOT (Khung giờ cố định)
+        Service(
+            name="Thuê Phòng Sinh hoạt Cộng đồng",
+            description="Đặt phòng họp/tiệc nhỏ. Mỗi slot = 4 tiếng. Cọc 500k (hoàn nếu dọn sạch).",
+            category=ServiceCategory.OTHER,
+            unit=ServiceUnit.PER_SLOT,
+            status=ServiceStatus.ACTIVE,
+            available_days="[5,6]",
             provider_name="Ban Quản Lý",
             created_at=datetime.now()
         ),
         Service(
             name="Chăm sóc thú cưng (Pet Sitting)",
-            description="Trông giữ chó mèo, dắt chó đi dạo trong khuôn viên.",
-            category=ServiceCategory.OTHER, 
-            unit="giờ",
+            description="Trông giữ chó mèo, dắt chó đi dạo trong khuôn viên. Tính theo giờ.",
+            category=ServiceCategory.OTHER,
+            unit=ServiceUnit.PER_HOUR,
             status=ServiceStatus.ACTIVE,
             available_days="[0,1,2,3,4,5,6]",
             provider_name="PetLove",
             created_at=datetime.now()
-        )
+        ),
+        
+        # ========== VÉ TIỆN ÍCH THÁNG (AMENITIES SUBSCRIPTION) ==========
+        # Tính theo THÁNG (Month)
+        Service(
+            name="Vé Gym tháng",
+            description="Vé sử dụng phòng Gym tòa nhà không giới hạn. Đăng ký theo tháng.",
+            category=ServiceCategory.OTHER,
+            unit=ServiceUnit.PER_MONTH,
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            provider_name="Ban Quản Lý",
+            created_at=datetime.now()
+        ),
+        Service(
+            name="Vé Hồ bơi tháng",
+            description="Vé sử dụng hồ bơi không giới hạn trong tháng.",
+            category=ServiceCategory.OTHER,
+            unit=ServiceUnit.PER_MONTH,
+            status=ServiceStatus.ACTIVE,
+            available_days="[0,1,2,3,4,5,6]",
+            available_time_start=time(6, 0),
+            available_time_end=time(21, 0),
+            provider_name="Ban Quản Lý",
+            created_at=datetime.now()
+        ),
     ]
     
     for s in services:
@@ -315,10 +389,10 @@ def create_services_and_bookings(users, session):
     for s in services:
         session.refresh(s)
 
-    # Tạo Price History cho các services
+    # ========== TẠO PRICE HISTORY CHO TẤT CẢ DỊCH VỤ ==========
     print("💰 Creating price histories for services...")
     price_histories = [
-        # Phí quản lý chung cư theo m2
+        # --- PHÍ QUẢN LÝ & PARKING (Không phải Service) ---
         PriceHistory(
             type=PriceType.MANAGEMENT_FEE_PER_M2,
             reference_id=None,
@@ -335,8 +409,6 @@ def create_services_and_bookings(users, session):
             effective_from=datetime(2024, 12, 1),
             created_by=users[0].id
         ),
-        
-        # Phí gửi xe ô tô
         PriceHistory(
             type=PriceType.PARKING_CAR,
             reference_id=None,
@@ -353,8 +425,6 @@ def create_services_and_bookings(users, session):
             effective_from=datetime(2024, 12, 1),
             created_by=users[0].id
         ),
-        
-        # Phí gửi xe máy
         PriceHistory(
             type=PriceType.PARKING_MOTOR,
             reference_id=None,
@@ -371,8 +441,6 @@ def create_services_and_bookings(users, session):
             effective_from=datetime(2024, 12, 1),
             created_by=users[0].id
         ),
-        
-        # Phí gửi xe đạp
         PriceHistory(
             type=PriceType.PARKING_BICYCLE,
             reference_id=None,
@@ -381,103 +449,186 @@ def create_services_and_bookings(users, session):
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
+        PriceHistory(
+            type=PriceType.ELECTRICITY_TIER_1,
+            reference_id=None,
+            price=Decimal("1806"),
+            description="Giá điện bậc 1 theo EVN Q4/2024",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[1].id  # accountant
+        ),
+        PriceHistory(
+            type=PriceType.WATER_TIER_1,
+            reference_id=None,
+            price=Decimal("7000"),
+            description="Giá nước sinh hoạt bậc 1",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[1].id
+        ),
         
-        # Giá dịch vụ Dọn dẹp căn hộ (service_id = 1)
+        # --- GIÁ CÁC DỊCH VỤ ---
+        # [0] Dọn dẹp theo giờ
         PriceHistory(
             type=PriceType.SERVICE,
             reference_id=services[0].id,
-            price=Decimal("150000"),
-            description="Giá khởi điểm dịch vụ dọn dẹp",
+            price=Decimal("80000"),
+            description="Giá dọn dẹp theo giờ",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
         PriceHistory(
             type=PriceType.SERVICE,
             reference_id=services[0].id,
-            price=Decimal("180000"),
-            description="Tăng giá mùa cao điểm Tết từ 15/12/2024",
+            price=Decimal("100000"),
+            description="Tăng giá mùa cao điểm Tết",
             effective_from=datetime(2024, 12, 15),
             created_by=users[0].id
         ),
         
-        # Giá các dịch vụ khác
+        # [1] Gói Dọn 1PN
         PriceHistory(
             type=PriceType.SERVICE,
-            reference_id=services[1].id,  # Vệ sinh Sofa & Thảm
-            price=Decimal("450000"),
-            description="Giá vệ sinh sofa & thảm",
-            effective_from=datetime(2024, 11, 1),
-            created_by=users[0].id
-        ),
-        PriceHistory(
-            type=PriceType.SERVICE,
-            reference_id=services[2].id,  # Diệt côn trùng
-            price=Decimal("600000"),
-            description="Giá diệt côn trùng",
-            effective_from=datetime(2024, 11, 1),
-            created_by=users[0].id
-        ),
-        PriceHistory(
-            type=PriceType.SERVICE,
-            reference_id=services[3].id,  # Sửa chữa điện lạnh
+            reference_id=services[1].id,
             price=Decimal("250000"),
-            description="Giá sửa chữa điện lạnh",
+            description="Giá gói dọn 1PN",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
+        
+        # [2] Gói Dọn 2PN
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[2].id,
+            price=Decimal("350000"),
+            description="Giá gói dọn 2PN",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [3] Vệ sinh Sofa & Thảm
         PriceHistory(
             type=PriceType.SERVICE,
             reference_id=services[3].id,
-            price=Decimal("300000"),
-            description="Tăng giá mùa nóng từ 01/12/2024",
-            effective_from=datetime(2024, 12, 1),
-            created_by=users[0].id
-        ),
-        PriceHistory(
-            type=PriceType.SERVICE,
-            reference_id=services[4].id,  # Sửa chữa Điện & Nước
-            price=Decimal("200000"),
-            description="Giá sửa chữa điện & nước",
+            price=Decimal("450000"),
+            description="Giá vệ sinh sofa & thảm/bộ",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
+        
+        # [4] Diệt côn trùng
         PriceHistory(
             type=PriceType.SERVICE,
-            reference_id=services[5].id,  # Dịch vụ Thợ khóa
-            price=Decimal("150000"),
-            description="Giá dịch vụ thợ khóa",
+            reference_id=services[4].id,
+            price=Decimal("600000"),
+            description="Giá diệt côn trùng/lần",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
+        
+        # [5] Giặt ủi
         PriceHistory(
             type=PriceType.SERVICE,
-            reference_id=services[6].id,  # Giao nước uống
-            price=Decimal("65000"),
-            description="Giá giao nước uống 19L",
-            effective_from=datetime(2024, 11, 1),
-            created_by=users[0].id
-        ),
-        PriceHistory(
-            type=PriceType.SERVICE,
-            reference_id=services[7].id,  # Giặt ủi
+            reference_id=services[5].id,
             price=Decimal("25000"),
             description="Giá giặt ủi/kg",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
+        
+        # [6] Sửa chữa điện lạnh
         PriceHistory(
             type=PriceType.SERVICE,
-            reference_id=services[8].id,  # Thuê khu vực BBQ
-            price=Decimal("300000"),
-            description="Giá thuê khu BBQ/giờ",
+            reference_id=services[6].id,
+            price=Decimal("200000"),
+            description="Phí nhân công sửa điện lạnh/lần (chưa bao gồm vật tư)",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
         PriceHistory(
             type=PriceType.SERVICE,
-            reference_id=services[9].id,  # Pet Sitting
+            reference_id=services[6].id,
+            price=Decimal("250000"),
+            description="Tăng giá mùa nóng từ 01/12/2024",
+            effective_from=datetime(2024, 12, 1),
+            created_by=users[0].id
+        ),
+        
+        # [7] Sửa Điện & Nước
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[7].id,
+            price=Decimal("150000"),
+            description="Phí nhân công sửa điện nước/lần",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [8] Thợ khóa
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[8].id,
             price=Decimal("100000"),
+            description="Phí dịch vụ thợ khóa/lần",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [9] Giao nước
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[9].id,
+            price=Decimal("65000"),
+            description="Giá giao nước 19L/bình",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [10] Thuê BBQ
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[10].id,
+            price=Decimal("200000"),
+            description="Giá thuê BBQ/giờ",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [11] Thuê Phòng sinh hoạt
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[11].id,
+            price=Decimal("300000"),
+            description="Giá thuê phòng/slot (4 tiếng)",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [12] Pet Sitting
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[12].id,
+            price=Decimal("80000"),
             description="Giá chăm sóc thú cưng/giờ",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [13] Vé Gym tháng
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[13].id,
+            price=Decimal("500000"),
+            description="Giá vé Gym/tháng",
+            effective_from=datetime(2024, 11, 1),
+            created_by=users[0].id
+        ),
+        
+        # [14] Vé Hồ bơi tháng
+        PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=services[14].id,
+            price=Decimal("400000"),
+            description="Giá vé hồ bơi/tháng",
             effective_from=datetime(2024, 11, 1),
             created_by=users[0].id
         ),
@@ -488,41 +639,57 @@ def create_services_and_bookings(users, session):
     session.commit()
     print(f"✅ Created {len(price_histories)} price history records")
 
-    # 2. Tạo Bookings
-    
-    # Booking 1: PENDING (Để test nút Cancel)
-    booking_pending = ServiceBooking(
-        booking_number="BK-PENDING-01",
-        service_id=services[0].id,
-        user_id=users[3].id, # user001
+    # ========== TẠO BOOKINGS MẪU ==========
+    # Booking 1: Dọn dẹp theo giờ - PENDING
+    booking1 = ServiceBooking(
+        booking_number="BK-CLEAN-HOUR-01",
+        service_id=services[0].id,  # Dọn dẹp theo giờ
+        user_id=users[3].id,  # user001
         scheduled_date=datetime.now() + timedelta(days=2),
         scheduled_time_start=time(9, 0),
-        unit_price=Decimal("150000"),  # Giá cũ (trước Tết)
-        quantity=2,
-        total_amount=Decimal("300000"),
+        unit_price=Decimal("80000"),
+        quantity=3,  # 3 giờ
+        total_amount=Decimal("240000"),
         status=BookingStatus.PENDING,
         created_at=datetime.now()
     )
 
-    # Booking 2: COMPLETED (Đã hoàn thành - KHÔNG có rating/feedback)
-    booking_completed = ServiceBooking(
-        booking_number="BK-COMPLETED-01",
-        service_id=services[1].id,
+    # Booking 2: Gói dọn 2PN - COMPLETED
+    booking2 = ServiceBooking(
+        booking_number="BK-CLEAN-PKG-01",
+        service_id=services[2].id,  # Gói Dọn 2PN
         user_id=users[3].id,
-        scheduled_date=datetime.now() - timedelta(days=10),
+        scheduled_date=datetime.now() - timedelta(days=5),
         scheduled_time_start=time(14, 0),
-        unit_price=Decimal("450000"),
+        unit_price=Decimal("350000"),
         quantity=1,
-        total_amount=Decimal("450000"),
+        total_amount=Decimal("350000"),
         status=BookingStatus.COMPLETED,
-        completed_at=datetime.now() - timedelta(days=10),
-        created_at=datetime.now() - timedelta(days=12)
+        completed_at=datetime.now() - timedelta(days=5),
+        created_at=datetime.now() - timedelta(days=7)
+    )
+    
+    # Booking 3: Sửa điện lạnh - CONFIRMED
+    booking3 = ServiceBooking(
+        booking_number="BK-REPAIR-AC-01",
+        service_id=services[6].id,  # Sửa điện lạnh
+        user_id=users[4].id,  # user002
+        scheduled_date=datetime.now() + timedelta(days=1),
+        scheduled_time_start=time(10, 0),
+        unit_price=Decimal("200000"),
+        quantity=1,
+        total_amount=Decimal("200000"),  # Chưa bao gồm vật tư
+        status=BookingStatus.CONFIRMED,
+        confirmed_at=datetime.now(),
+        created_at=datetime.now()
     )
 
-    session.add(booking_pending)
-    session.add(booking_completed)
+    session.add(booking1)
+    session.add(booking2)
+    session.add(booking3)
     session.commit()
-    print("✅ Created Services & Bookings scenarios (Pending & Completed)")
+    print("✅ Created Services & Bookings (Diverse scenarios with different units)")
+
 
 def create_bills(users):
     bills = [
@@ -658,13 +825,46 @@ def create_apartments():
                 # Mặc định tất cả đều AVAILABLE
                 status = ApartmentStatus.AVAILABLE
                 description = None
+                move_in_date = None
+                electricity_meter_start = None
+                water_meter_start = None
                 
-                # Đặc biệt một vài căn có người ở (để test)
+                # Đặc biệt một vài căn có người ở (để test Pro-rata)
                 special_occupied = ["A101", "A202", "A305", "B101", "B203", "B404"]
                 if apartment_number in special_occupied:
                     status = ApartmentStatus.OCCUPIED
-                    if room == 1:
-                        description = "Căn góc, view đẹp"
+                    
+                    # Set ngày chuyển vào khác nhau để test Pro-rata
+                    if apartment_number == "A101":
+                        description = "Căn góc, view đẹp. Chuyển vào đầu tháng."
+                        move_in_date = date(2024, 12, 1)  # Đầu tháng -> Full tháng
+                        electricity_meter_start = Decimal("1250.00")
+                        water_meter_start = Decimal("85.50")
+                    elif apartment_number == "A202":
+                        description = "Chuyển vào giữa tháng (ngày 15)"
+                        move_in_date = date(2024, 12, 15)  # Giữa tháng -> Pro-rata
+                        electricity_meter_start = Decimal("0.00")  # Căn mới
+                        water_meter_start = Decimal("0.00")
+                    elif apartment_number == "A305":
+                        description = "Chuyển vào cuối tháng (ngày 25)"
+                        move_in_date = date(2024, 12, 25)  # Cuối tháng -> Pro-rata ít ngày
+                        electricity_meter_start = Decimal("520.30")
+                        water_meter_start = Decimal("42.00")
+                    elif apartment_number == "B101":
+                        description = "Căn góc, view đẹp. Ở từ tháng trước."
+                        move_in_date = date(2024, 11, 10)  # Tháng trước -> Full tháng 12
+                        electricity_meter_start = Decimal("3480.75")
+                        water_meter_start = Decimal("125.20")
+                    elif apartment_number == "B203":
+                        description = "Chuyển vào ngày 20"
+                        move_in_date = date(2024, 12, 20)  # Ngày 20 -> Pro-rata
+                        electricity_meter_start = Decimal("1890.00")
+                        water_meter_start = Decimal("98.50")
+                    elif apartment_number == "B404":
+                        description = "Chuyển vào ngày 5"
+                        move_in_date = date(2024, 12, 5)  # Đầu tháng -> Gần full
+                        electricity_meter_start = Decimal("2100.00")
+                        water_meter_start = Decimal("110.00")
                 
                 apartment = Apartment(
                     apartment_number=apartment_number,
@@ -674,7 +874,10 @@ def create_apartments():
                     bedrooms=apt_type["bedrooms"],
                     bathrooms=apt_type["bathrooms"],
                     status=status,
-                    description=description
+                    description=description,
+                    move_in_date=move_in_date,
+                    electricity_meter_start=electricity_meter_start,
+                    water_meter_start=water_meter_start
                 )
                 apartments.append(apartment)
     

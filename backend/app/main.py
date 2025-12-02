@@ -45,6 +45,17 @@ app.include_router(api_router, prefix="/api/v1")
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+    
+    # Khởi động scheduler cho bill generation tự động
+    from app.core.scheduler import start_scheduler
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Dừng scheduler khi shutdown"""
+    from app.core.scheduler import stop_scheduler
+    stop_scheduler()
 
 @app.get("/")
 async def root():

@@ -35,6 +35,7 @@ import {
 import { useEffect, useState, useRef } from 'react';
 import { billsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ProRataBadge from '../components/ProRataBadge';
 
 // Interface linh hoạt chấp nhận cả trạng thái cũ và mới
 interface Bill {
@@ -45,6 +46,7 @@ interface Bill {
   dueDate: string;
   status: 'paid' | 'pending' | 'unpaid' | 'overdue' | 'cancelled';
   description: string;
+  is_prorated?: boolean;  // Pro-rata badge
 }
 
 interface PaymentRequestResponse {
@@ -201,6 +203,7 @@ export default function Bills() {
         dueDate: b.due_date || b.dueDate,
         status: b.status.toLowerCase(),
         description: b.description || '',
+        is_prorated: b.is_prorated || false,
       }));
       setUnpaidBills(formattedPending);
 
@@ -213,6 +216,7 @@ export default function Bills() {
         dueDate: b.due_date || b.dueDate,
         status: b.status.toLowerCase(),
         description: b.description || '',
+        is_prorated: b.is_prorated || false,
       }));
       setPaidBills(formattedPaid);
 
@@ -402,6 +406,11 @@ export default function Bills() {
                             <Badge colorScheme={getStatusColor(bill.status)}>
                               {bill.status.toUpperCase()}
                             </Badge>
+                            {bill.is_prorated && (
+                              <ProRataBadge 
+                                tooltipText="Hóa đơn được tính theo tỷ lệ số ngày ở thực tế" 
+                              />
+                            )}
                           </HStack>
                           <Text color="gray.600" mb="1">
                             {bill.description}
@@ -459,6 +468,11 @@ export default function Bills() {
                               <FiCheckCircle />
                               ĐÃ THANH TOÁN
                             </Badge>
+                            {bill.is_prorated && (
+                              <ProRataBadge 
+                                tooltipText="Hóa đơn được tính theo tỷ lệ số ngày ở thực tế" 
+                              />
+                            )}
                           </HStack>
                           <Text color="gray.600" mb="1">
                             {bill.description}

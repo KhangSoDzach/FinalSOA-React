@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select, func
 from typing import List, Optional
 from datetime import datetime, time
+from decimal import Decimal
 from app.core.database import get_session
 from app.api.dependencies import get_current_user, get_current_receptionist
 from app.models.user import User
 from app.models.service import Service, ServiceBooking, ServiceStatus, BookingStatus
+from app.models.price_history import PriceHistory, PriceType
 from app.schemas.service import (
     ServiceCreate, ServiceUpdate, ServiceResponse,
     ServiceBookingCreate, ServiceBookingUpdate, ServiceBookingResponse,
@@ -15,6 +17,21 @@ from app.schemas.service import (
 import uuid
 
 router = APIRouter()
+
+def get_current_service_price(service_id: int, session: Session) -> Decimal:
+    """Get the current price for a service from price history"""
+    statement = (
+        select(PriceHistory)
+        .where(
+            PriceHistory.type == PriceType.SERVICE,
+            PriceHistory.reference_id == service_id,
+            PriceHistory.effective_from <= datetime.now()
+        )
+        .order_by(PriceHistory.effective_from.desc())
+        .limit(1)
+    )
+    price_history = session.exec(statement).first()
+    return price_history.price if price_history else Decimal("0.00")
 
 # --- PUBLIC / USER ENDPOINTS ---
 
@@ -34,7 +51,15 @@ async def get_services(
     
     statement = statement.offset(skip).limit(limit).order_by(Service.name)
     services = session.exec(statement).all()
-    return services
+    
+    # Add current price to each service
+    result = []
+    for service in services:
+        service_dict = service.model_dump()
+        service_dict['price'] = get_current_service_price(service.id, session)
+        result.append(ServiceResponse(**service_dict))
+    
+    return result
 
 @router.get("/bookings/my-bookings", response_model=List[ServiceBookingResponse])
 async def get_my_bookings(
@@ -75,18 +100,24 @@ async def book_service(
     if booking_create.scheduled_date < current_time:
         raise HTTPException(status_code=400, detail="Không thể đặt lịch trong quá khứ")
     
+    # Get current price from price history
+    current_price = get_current_service_price(service_id, session)
+    if current_price == Decimal("0.00"):
+        raise HTTPException(status_code=400, detail="Dịch vụ chưa có giá")
+    
     booking_number = f"BK-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
-    total_amount = service.price * booking_create.quantity
+    total_amount = current_price * booking_create.quantity
     
     booking = ServiceBooking(
         booking_number=booking_number,
         service_id=service_id, 
         user_id=current_user.id,
-        unit_price=service.price,
+        unit_price=current_price,
         total_amount=total_amount,
         scheduled_date=booking_create.scheduled_date,
         scheduled_time_start=booking_create.scheduled_time_start,
         special_instructions=booking_create.special_instructions,
+        quantity=booking_create.quantity,
         status=BookingStatus.PENDING 
     )
     
@@ -145,7 +176,15 @@ async def get_all_services_admin(
     
     statement = statement.offset(skip).limit(limit).order_by(Service.name)
     services = session.exec(statement).all()
-    return services
+    
+    # Add current price to each service
+    result = []
+    for service in services:
+        service_dict = service.model_dump()
+        service_dict['price'] = get_current_service_price(service.id, session)
+        result.append(ServiceResponse(**service_dict))
+    
+    return result
 
 
 @router.post("/admin", response_model=ServiceResponse)
@@ -155,13 +194,31 @@ async def create_service(
     session: Session = Depends(get_session)
 ):
     """Create new service (receptionist/manager only)"""
-    service = Service(**service_create.dict())
+    # Extract price from service_create
+    price = service_create.price
+    service_data = service_create.dict(exclude={'price'})
     
+    service = Service(**service_data)
     session.add(service)
     session.commit()
     session.refresh(service)
     
-    return service
+    # Create price history entry
+    price_history = PriceHistory(
+        type=PriceType.SERVICE,
+        reference_id=service.id,
+        price=price,
+        description=f"Giá ban đầu cho dịch vụ {service.name}",
+        effective_from=datetime.now(),
+        created_by=current_user.id
+    )
+    session.add(price_history)
+    session.commit()
+    
+    # Return service with current price
+    service_dict = service.model_dump()
+    service_dict['price'] = price
+    return ServiceResponse(**service_dict)
 
 
 @router.put("/admin/{service_id}", response_model=ServiceResponse)
@@ -177,15 +234,37 @@ async def update_service(
         raise HTTPException(status_code=404, detail="Service not found")
     
     update_data = service_update.dict(exclude_unset=True)
+    
+    # Handle price update separately in PriceHistory
+    new_price = update_data.pop('price', None)
+    
+    # Update service fields
     for field, value in update_data.items():
         setattr(service, field, value)
     
     service.updated_at = datetime.utcnow()
     session.add(service)
     session.commit()
+    
+    # If price is being updated, create new price history entry
+    if new_price is not None:
+        price_history = PriceHistory(
+            type=PriceType.SERVICE,
+            reference_id=service.id,
+            price=new_price,
+            description=f"Cập nhật giá dịch vụ {service.name}",
+            effective_from=datetime.now(),
+            created_by=current_user.id
+        )
+        session.add(price_history)
+        session.commit()
+    
     session.refresh(service)
     
-    return service
+    # Return service with current price
+    service_dict = service.model_dump()
+    service_dict['price'] = new_price if new_price is not None else get_current_service_price(service.id, session)
+    return ServiceResponse(**service_dict)
 
 
 @router.delete("/admin/{service_id}")

@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Numeric
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, timedelta
 from enum import Enum
@@ -27,10 +28,11 @@ class Bill(SQLModel, table=True):
     bill_type: BillType
     title: str
     description: Optional[str] = None
-    amount: Decimal = Field(decimal_places=2)
+    amount: Decimal = Field(sa_column=Column(Numeric(15, 2)))
     due_date: datetime
     status: BillStatus = Field(default=BillStatus.PENDING)
     paid_at: Optional[datetime] = None
+    is_prorated: bool = Field(default=False)  # Đánh dấu có tính Pro-rata
     
     # Relationships
     user: Optional["User"] = Relationship(back_populates="bills")
@@ -48,7 +50,7 @@ class PaymentStatus(str, Enum):
 class Payment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     payment_date: datetime = Field(default_factory=datetime.utcnow)
-    amount: Decimal = Field(decimal_places=2)
+    amount: Decimal = Field(sa_column=Column(Numeric(15, 2)))
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
     message: Optional[str] = Field(default="", max_length=200)
     
