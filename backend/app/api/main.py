@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, users, bills, notifications, tickets, services, apartments, vehicles
+from app.api.routes import auth, users, bills, notifications, tickets, services, apartments, vehicles, analytics
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
 api_router.include_router(services.router, prefix="/services", tags=["services"])
 api_router.include_router(apartments.router, prefix="/apartments", tags=["apartments"])
 api_router.include_router(vehicles.router, prefix="/vehicles", tags=["vehicles"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

@@ -462,4 +462,37 @@ export const vehiclesAPI = {
   }
 }
 
+// 📊 Analytics API
+export const analyticsAPI = {
+  getOccupancyRate: async () => {
+    const response = await api.get('/analytics/occupancy-rate')
+    return response.data
+  },
+
+  getMonthlyRevenue: async (months: number = 12) => {
+    const response = await api.get('/analytics/monthly-revenue', { params: { months } })
+    return response.data
+  },
+
+  getOutstandingBills: async () => {
+    const response = await api.get('/analytics/outstanding-bills')
+    return response.data
+  },
+
+  getTopDebtors: async (limit: number = 5) => {
+    const response = await api.get('/analytics/top-debtors', { params: { limit } })
+    return response.data
+  },
+
+  getTicketHeatmap: async () => {
+    const response = await api.get('/analytics/ticket-heatmap')
+    return response.data
+  },
+
+  getDashboardSummary: async () => {
+    const response = await api.get('/analytics/dashboard-summary')
+    return response.data
+  }
+}
+
 export default api
